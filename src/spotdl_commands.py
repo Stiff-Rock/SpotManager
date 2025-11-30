@@ -69,7 +69,7 @@ def syncPlaylist(playlist):
     p_url = playlist["url"]
 
     # Configured output directory for downloads
-    output_directory = f"{p_title}"
+    output_directory = f"playlists/{p_title}"
 
     # Get the spotdl instance
     spotdl = init_spotdl(output_directory)
