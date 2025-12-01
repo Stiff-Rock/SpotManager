@@ -66,6 +66,8 @@ class SpotWidget(QtWidgets.QWidget):
 
         self.parse_playlists()
 
+    # TODO: THE SYNC OPERATIONS ARE BLOCKING ONES
+
     def parse_playlists(self):
         global PLAYLISTS_JSON_PATH
 
