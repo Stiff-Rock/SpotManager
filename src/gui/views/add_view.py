@@ -1,34 +1,46 @@
 import json
 from PySide6 import QtCore, QtGui, QtWidgets
+from src.logic.spotdl_commands import get_user_playlists
+from src.utils.config_manager import CONFIG
+from src.utils.utils import PLAYLISTS_JSON_PATH, clear_layout
 
-from spotdl_commands import syncPlaylist
 
-PLAYLISTS_JSON_PATH = "playlists.json"
-
-
-class SpotWidget(QtWidgets.QWidget):
+class AddView(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(850, 600)
-        self.setWindowTitle("SpotManager")
 
-        self.p_data = []
-        self.checkboxes = []
-
-        window_layout = QtWidgets.QVBoxLayout(self)
+        add_layout = QtWidgets.QVBoxLayout(self)
 
         # Header
         header_layout = QtWidgets.QVBoxLayout()
         header_layout.setContentsMargins(0, 20, 0, 20)
+
+        # Title label
         header_lbl = QtWidgets.QLabel(
-            "<b>MANAGE PLAYLISTS</b>", alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+            "<b>ADD PLAYLISTS</b>", alignment=QtCore.Qt.AlignmentFlag.AlignCenter
         )
         font = QtGui.QFont()
         font.setPointSize(18)
         header_lbl.setFont(font)
-
         header_layout.addWidget(header_lbl)
-        window_layout.addLayout(header_layout)
+        add_layout.addLayout(header_layout)
+
+        # Top input fields
+        input_layout = QtWidgets.QHBoxLayout()
+
+        # Username label and input field
+        username_lbl = QtWidgets.QLabel("Username")
+        username_le = QtWidgets.QLineEdit()
+        username_le.setText(CONFIG.get("username"))
+        self.search_playlists(username_le.text())
+        username_le.editingFinished.connect(
+            lambda: self.search_playlists(username_le.text())
+        )
+
+        input_layout.addWidget(username_lbl)
+        input_layout.addWidget(username_le)
+
+        add_layout.addLayout(input_layout)
 
         # Playlist list
         playlists_container_widget = QtWidgets.QWidget()
@@ -40,12 +52,13 @@ class SpotWidget(QtWidgets.QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(playlists_container_widget)
 
-        window_layout.addWidget(scroll_area)
+        add_layout.addWidget(scroll_area)
 
         # Footer
         footer_layout = QtWidgets.QVBoxLayout()
         footer_layout.setContentsMargins(0, 20, 0, 20)
 
+        """
         sync_btn = QtWidgets.QPushButton("Sync All")
         sync_btn.clicked.connect(self.sync_all_playlists)
 
@@ -61,29 +74,53 @@ class SpotWidget(QtWidgets.QWidget):
 
         footer_layout.addWidget(sync_btn)
         footer_layout.addLayout(horizontal_buttons_layout)
+        """
 
-        window_layout.addLayout(footer_layout)
-
-        self.parse_playlists()
+        add_layout.addLayout(footer_layout)
 
     # TODO: THE SYNC OPERATIONS ARE BLOCKING ONES
 
-    def parse_playlists(self):
-        global PLAYLISTS_JSON_PATH
+    @QtCore.Slot(str)
+    def search_playlists(self, username: str | None):
+        clear_layout(self.playlists_container_layout)
 
-        self.checkboxes.clear()
-
-        with open(PLAYLISTS_JSON_PATH, "r") as file:
+        with open(PLAYLISTS_JSON_PATH, "r+") as file:
             try:
-                self.p_data = json.load(file)
+                self.data = json.load(file)
+            except json.JSONDecodeError:
+                self.data = {}
+                json.dump(self.data, file, indent=2)
             except FileNotFoundError:
                 print(f"Error: {PLAYLISTS_JSON_PATH} not found.")
                 return
 
-            for i, playlist in enumerate(self.p_data):
+            if username is None:
+                if not self.data["username"]:
+                    # Write a default value
+                    self.data["username"] = "Spotify"
+                    file.seek(0)
+                    json.dump(self.data, file, indent=2)
+                else:
+                    username = self.data["username"]
+            else:
+                # Write new value
+                self.data["username"] = username
+                file.seek(0)
+                json.dump(self.data, file, indent=2)
+
+            if not username:
+                print("Could not find playlists: no username provided")
+                return
+
+            user_playlists = get_user_playlists(username)
+
+            if not user_playlists:
+                print(f"No playlists found for user id {username}")
+                return
+
+            for playlist in user_playlists:
                 title = playlist.get("title", "N/A")
                 url = playlist.get("url", "#")
-                enabled = playlist.get("enabled", False)
 
                 playlist_container = QtWidgets.QFrame()
                 playlist_container.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
@@ -108,15 +145,13 @@ class SpotWidget(QtWidgets.QWidget):
                 buttons_layout = QtWidgets.QHBoxLayout()
 
                 # Enabled Checkbox
-                enabled_checkbox = QtWidgets.QCheckBox("Enabled: ")
-                enabled_checkbox.setChecked(enabled)
-                enabled_checkbox.toggled.connect(
-                    lambda checked, i=i: self.manual_toggle_playlist(checked, i)
-                )
-                self.checkboxes.append(enabled_checkbox)
-                buttons_layout.addWidget(enabled_checkbox, stretch=4)
+                add_button = QtWidgets.QPushButton("Add")
+                add_button.clicked.connect(self.add_playlist)
+
+                buttons_layout.addWidget(add_button, stretch=4)
 
                 # Sync playlist button
+                """
                 sync_btn = QtWidgets.QPushButton("Sync Playlist")
                 sync_btn.clicked.connect(
                     lambda _, p_data=playlist: self.sync_playlist(p_data)
@@ -124,45 +159,9 @@ class SpotWidget(QtWidgets.QWidget):
                 buttons_layout.addWidget(sync_btn, stretch=1)
 
                 playlist_layout.addLayout(buttons_layout)
+                """
 
                 self.playlists_container_layout.addWidget(playlist_container)
 
-    @QtCore.Slot(bool, int)
-    def manual_toggle_playlist(self, checked, i):
-        playlist = self.p_data[i]
-        playlist["enabled"] = checked
-
-        try:
-            with open(PLAYLISTS_JSON_PATH, "w") as file:
-                json.dump(self.p_data, file, indent=2)
-        except IOError:
-            print("Error writing to playlists JSON file.")
-            return
-
-    @QtCore.Slot(bool)
-    def toggle_all_playlist(self, enabled):
-        for i, playlist in enumerate(self.p_data):
-            playlist["enabled"] = enabled
-            checkbox = self.checkboxes[i]
-            checkbox.blockSignals(True)
-            checkbox.setChecked(enabled)
-            checkbox.blockSignals(False)
-
-        try:
-            with open(PLAYLISTS_JSON_PATH, "w") as file:
-                json.dump(self.p_data, file, indent=2)
-        except IOError:
-            print("Error writing to playlists JSON file.")
-            return
-
-    @QtCore.Slot(int)
-    def sync_playlist(self, playlist):
-        # TODO: Animation download this playlist
-        syncPlaylist(playlist)
-
-    @QtCore.Slot()
-    def sync_all_playlists(self):
-        for playlist in self.p_data:
-            if playlist["enabled"]:
-                # TODO: Animation download this playlist
-                syncPlaylist(playlist)
+    def add_playlist(self):
+        print("ADDING")
