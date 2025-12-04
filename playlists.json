@@ -1,4 +1,53 @@
 {
   "username": "4jhs7q97i1u7csh78ryakbvhb",
-  "playlists": []
+  "playlists": {
+    "7FOIpMWVS78vGhZzD7tBHk": {
+      "enabled": true,
+      "id": "7FOIpMWVS78vGhZzD7tBHk",
+      "owner": "Yago",
+      "title": "Classics",
+      "total_tracks": 14,
+      "url": "https://open.spotify.com/playlist/7FOIpMWVS78vGhZzD7tBHk"
+    },
+    "1eA9Olb9vRuwI9e4sET6dp": {
+      "enabled": false,
+      "id": "1eA9Olb9vRuwI9e4sET6dp",
+      "owner": "Yago",
+      "title": "Tame Impala",
+      "total_tracks": 30,
+      "url": "https://open.spotify.com/playlist/1eA9Olb9vRuwI9e4sET6dp"
+    },
+    "0YzmrtLceu12a1kIyBAXC4": {
+      "enabled": false,
+      "id": "0YzmrtLceu12a1kIyBAXC4",
+      "owner": "Yago",
+      "title": "Justice",
+      "total_tracks": 57,
+      "url": "https://open.spotify.com/playlist/0YzmrtLceu12a1kIyBAXC4"
+    },
+    "6CnS6t6ihRK4PbrcCEVWh5": {
+      "enabled": false,
+      "id": "6CnS6t6ihRK4PbrcCEVWh5",
+      "owner": "Yago",
+      "title": "JPEGMAFIA",
+      "total_tracks": 15,
+      "url": "https://open.spotify.com/playlist/6CnS6t6ihRK4PbrcCEVWh5"
+    },
+    "1pllwe0u8qEpqSfall2QPG": {
+      "enabled": false,
+      "id": "1pllwe0u8qEpqSfall2QPG",
+      "owner": "Yago",
+      "title": "Daft Punk",
+      "total_tracks": 56,
+      "url": "https://open.spotify.com/playlist/1pllwe0u8qEpqSfall2QPG"
+    },
+    "1q9Lhx9WJtvIPrd8KQKwNf": {
+      "enabled": true,
+      "id": "1q9Lhx9WJtvIPrd8KQKwNf",
+      "owner": "Yago",
+      "title": "Gorillaz",
+      "total_tracks": 36,
+      "url": "https://open.spotify.com/playlist/1q9Lhx9WJtvIPrd8KQKwNf"
+    }
+  }
 }

@@ -1,6 +1,4 @@
 import os
-from sys import exception
-from typing import Any
 from PySide6.QtCore import SignalInstance
 import requests
 from spotdl import Spotdl
@@ -9,13 +7,13 @@ import spotipy
 from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
+from src.utils.config_manager import PlaylistData
+
 spotdl = None
 spotipy_client = None
 
 client_id = None
 client_secret = None
-
-# TODO: GET THE PLAYLISTS FROM THE PROFILE AND NOT FROM THE JSON FILE
 
 
 def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
@@ -26,7 +24,7 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
         global client_secret
 
         if not client_id or not client_secret:
-            get_config()
+            get_spotdl_config()
 
         if not client_id or not client_secret:
             print(
@@ -59,11 +57,13 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
     while results:
         for playlist in results["items"]:
             if playlist.get("public", True):
-                playlist_data = {
-                    "title": playlist["name"],
-                    "url": playlist["external_urls"]["spotify"],
-                    "total_tracks": playlist["tracks"]["total"],
+                playlist_data: PlaylistData = {
                     "owner": playlist["owner"]["display_name"],
+                    "title": playlist["name"],
+                    "total_tracks": playlist["tracks"]["total"],
+                    "url": playlist["external_urls"]["spotify"],
+                    "id": playlist["id"],
+                    "enabled": True,
                 }
 
                 found_playlist_signal.emit(playlist_data)
@@ -83,7 +83,7 @@ def download_cover_image(output_directory, p_url):
             global client_secret
 
             if not client_id or not client_secret:
-                get_config()
+                get_spotdl_config()
 
             if not client_id or not client_secret:
                 print(
@@ -132,7 +132,7 @@ def init_spotdl(output_directory: str):
         global client_secret
 
         if not client_id or not client_secret:
-            get_config()
+            get_spotdl_config()
 
         if not client_id or not client_secret:
             print(
@@ -152,7 +152,7 @@ def init_spotdl(output_directory: str):
         raise Exception(f"Error initialising Spotdl instance: {spotdl}")
 
 
-def syncPlaylist(playlist):
+def syncPlaylist(playlist: PlaylistData):
     print(f"\n== Starting sync for '{playlist['title']}' ==")
 
     # Get the spotdl configuration
@@ -193,7 +193,7 @@ def syncPlaylist(playlist):
         print(f"Error while synchronizing playlist '{p_title}': {e}")
 
 
-def get_config():
+def get_spotdl_config():
     # Get the configuration
     config = None
 

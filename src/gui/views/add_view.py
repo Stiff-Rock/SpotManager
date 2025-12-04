@@ -1,19 +1,20 @@
-import json
-from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
+from src.gui.widgets.playlist_card import PlaylistCard
+from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import get_user_playlists
-from src.utils.config_manager import CONFIG
-from src.utils.utils import PLAYLISTS_JSON_PATH
+from src.utils.config_manager import CONFIG, PlaylistData
 
 
 class AddView(QtWidgets.QWidget):
+    playlist_added_to_list = QtCore.Signal(dict)
+
     def __init__(self):
         super().__init__()
 
         self.logic_thread = None
         self.worker = None
 
-        add_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout = QtWidgets.QVBoxLayout(self)
 
         # Header
         header_layout = QtWidgets.QVBoxLayout()
@@ -27,7 +28,7 @@ class AddView(QtWidgets.QWidget):
         font.setPointSize(18)
         header_lbl.setFont(font)
         header_layout.addWidget(header_lbl)
-        add_layout.addLayout(header_layout)
+        self.main_layout.addLayout(header_layout)
 
         # Top input fields
         input_layout = QtWidgets.QHBoxLayout()
@@ -35,54 +36,24 @@ class AddView(QtWidgets.QWidget):
         # Username label and input field
         username_lbl = QtWidgets.QLabel("Username")
         self.username_le = QtWidgets.QLineEdit()
-        self.username_le.setText(CONFIG.get("username"))
+        self.username_le.setText(CONFIG.get_username())
         self.username_le.editingFinished.connect(
-            lambda: self.search_playlists(self.username_le.text())
+            lambda: self._search_playlists(self.username_le.text())
         )
 
         input_layout.addWidget(username_lbl)
         input_layout.addWidget(self.username_le)
 
-        add_layout.addLayout(input_layout)
+        self.main_layout.addLayout(input_layout)
 
         # Playlist scroll list
-        self.playlists_container_widget = None
-        self.playlists_container_layout = None
+        self.scroll_playlists_container = ScrollPlaylistsContainer()
+        self.main_layout.addWidget(self.scroll_playlists_container)
 
-        self.scroll_area = QtWidgets.QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        add_layout.addWidget(self.scroll_area)
-
-        # Footer
-        footer_layout = QtWidgets.QVBoxLayout()
-        footer_layout.setContentsMargins(0, 20, 0, 20)
-
-        """
-        sync_btn = QtWidgets.QPushButton("Sync All")
-        sync_btn.clicked.connect(self.sync_all_playlists)
-
-        horizontal_buttons_layout = QtWidgets.QHBoxLayout()
-        enable_btn = QtWidgets.QPushButton("Enable All")
-        enable_btn.clicked.connect(lambda: self.toggle_all_playlist(True))
-
-        disable_btn = QtWidgets.QPushButton("Disable All")
-        disable_btn.clicked.connect(lambda: self.toggle_all_playlist(False))
-
-        horizontal_buttons_layout.addWidget(enable_btn)
-        horizontal_buttons_layout.addWidget(disable_btn)
-
-        footer_layout.addWidget(sync_btn)
-        footer_layout.addLayout(horizontal_buttons_layout)
-        """
-
-        add_layout.addLayout(footer_layout)
-
-        self.search_playlists("default")
-
-    # TODO: THE SYNC OPERATIONS ARE BLOCKING ONES
+        self._search_playlists("default")
 
     @QtCore.Slot(str)
-    def search_playlists(self, username: str):
+    def _search_playlists(self, username: str):
         if self.logic_thread and self.logic_thread.isRunning():
             print("Previous search is still running, cancelling...")
             return
@@ -92,92 +63,62 @@ class AddView(QtWidgets.QWidget):
         self.worker.moveToThread(self.logic_thread)
 
         self.logic_thread.started.connect(self.worker.run)
-        self.worker.updated_username.connect(self.update_username)
-        self.worker.found_playlist.connect(self.show_playlist)
+        self.worker.updated_username.connect(self._update_username)
+        self.worker.found_playlist.connect(self._add_playlist_card)
 
         self.worker.finished.connect(self.logic_thread.quit)
 
         self.logic_thread.finished.connect(self.worker.deleteLater)
         self.logic_thread.finished.connect(self.logic_thread.deleteLater)
 
-        self.logic_thread.finished.connect(self.cleanup_thread)
+        self.logic_thread.finished.connect(self._cleanup_thread)
 
-        self.create_playlist_layout()
+        self.scroll_playlists_container.reset_playlist_layout()
         self.logic_thread.start()
 
     @QtCore.Slot(dict)
-    def show_playlist(self, playlist: dict[str, Any]):
-        title = playlist.get("title", "N/A")
-        url = playlist.get("url", "#")
+    def _add_playlist_card(self, new_playlist: PlaylistData):
+        if not self.scroll_playlists_container:
+            return
 
-        playlist_container = QtWidgets.QFrame()
-        playlist_container.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        playlist_card = PlaylistCard("search", new_playlist)
+        playlist_card.on_add_playlist.connect(self._add_playlist)
+        self.scroll_playlists_container.add_playlist_card(playlist_card)
 
-        playlist_layout = QtWidgets.QVBoxLayout(playlist_container)
-
-        # Title Label
-        title_label = QtWidgets.QLabel(f"Title: <b>{title}</b>")
-        title_label.setTextInteractionFlags(
-            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        playlist_layout.addWidget(title_label)
-
-        # Url Label
-        url_label = QtWidgets.QLabel(f"URL: <b>{url}</b>")
-        url_label.setTextInteractionFlags(
-            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        playlist_layout.addWidget(url_label)
-
-        # Playlist buttons layout
-        buttons_layout = QtWidgets.QHBoxLayout()
-
-        # Enabled Checkbox
-        add_button = QtWidgets.QPushButton("Add")
-        add_button.clicked.connect(self.add_playlist)
-
-        buttons_layout.addWidget(add_button, stretch=4)
-
-        # Sync playlist button
-        """
-        sync_btn = QtWidgets.QPushButton("Sync Playlist")
-        sync_btn.clicked.connect(
-            lambda _, p_data=playlist: self.sync_playlist(p_data)
-        )
-        buttons_layout.addWidget(sync_btn, stretch=1)
-
-        playlist_layout.addLayout(buttons_layout)
-        """
-
-        self.playlists_container_layout.addWidget(playlist_container)
-
-    @QtCore.Slot()
-    def update_username(self, new_username: str):
+    @QtCore.Slot(str)
+    def _update_username(self, new_username: str):
         self.username_le.setText(new_username)
 
-    @QtCore.Slot()
-    def add_playlist(self):
-        print("ADDING")
+    @QtCore.Slot(dict)
+    def _add_playlist(self, new_playlist: dict):
+        if self.logic_thread and self.logic_thread.isRunning():
+            print("Previous search is still running, cancelling...")
+            return
 
-    def cleanup_thread(self):
+        self.logic_thread = QtCore.QThread()
+        self.worker = AddPlaylistWorker(new_playlist)
+        self.worker.moveToThread(self.logic_thread)
+
+        self.logic_thread.started.connect(self.worker.run)
+        self.worker.added_playlist.connect(self.playlist_added_to_list.emit)
+
+        self.worker.finished.connect(self.logic_thread.quit)
+
+        self.logic_thread.finished.connect(self.worker.deleteLater)
+        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
+
+        self.logic_thread.finished.connect(self._cleanup_thread)
+
+        self.logic_thread.start()
+
+    def _cleanup_thread(self):
         self.worker = None
         self.logic_thread = None
-
-    def create_playlist_layout(self):
-        if self.playlists_container_widget is QtWidgets.QWidget:
-            self.playlists_container_widget.deleteLater()
-
-        self.playlists_container_widget = QtWidgets.QWidget()
-        self.playlists_container_layout = QtWidgets.QVBoxLayout(
-            self.playlists_container_widget
-        )
-
-        self.scroll_area.setWidget(self.playlists_container_widget)
 
 
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
-    found_playlist = QtCore.Signal(dict)
+    found_playlist = QtCore.Signal(PlaylistData)
     progress = QtCore.Signal(int)
     finished = QtCore.Signal()
 
@@ -191,40 +132,67 @@ class SearchPlaylistsWorker(QtCore.QObject):
         self._is_cancelled = True
 
     def run(self):
-        with open(PLAYLISTS_JSON_PATH, "r+") as file:
-            try:
-                self.data = json.load(file)
-            except json.JSONDecodeError:
-                self.data = {}
-                json.dump(self.data, file, indent=2)
-            except FileNotFoundError:
-                print(f"Error: {PLAYLISTS_JSON_PATH} not found.")
-                self.finished.emit()
-                return
-
+        try:
             if not self.username:
                 self.finished.emit()
                 return
             elif self.username == "default":
-                if not self.data["username"]:
+                if not CONFIG.get_username():
                     # Write a default value
-                    self.data["username"] = "Spotify"
-                    file.seek(0)
-                    json.dump(self.data, file, indent=2)
+                    CONFIG.set_username("Spotify")
                     self.updated_username.emit(self.username)
                 else:
-                    self.username = self.data["username"]
+                    self.username = CONFIG.get_username()
             else:
                 # Write new value
-                self.data["username"] = self.username
-                file.seek(0)
-                json.dump(self.data, file, indent=2)
+                CONFIG.set_username(self.username)
 
             if not self.username:
                 print("Could not find playlists: no username provided")
                 self.finished.emit()
                 return
 
-        get_user_playlists(self.username, self.found_playlist)
+            get_user_playlists(self.username, self.found_playlist)
+        except:
+            pass
+        finally:
+            self.finished.emit()
 
-        self.finished.emit()
+
+class AddPlaylistWorker(QtCore.QObject):
+    finished = QtCore.Signal()
+    added_playlist = QtCore.Signal(PlaylistData)
+
+    def __init__(self, new_playlist):
+        super().__init__()
+        self.new_playlist: PlaylistData = new_playlist
+
+    @QtCore.Slot()
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        try:
+            current_playlists = CONFIG.get_all_playlists()
+
+            p_id = self.new_playlist.get("id")
+
+            if current_playlists is None:
+                print("Unable to add playlists: Non existent key on json file")
+                self.finished.emit()
+                return
+
+            if p_id in current_playlists:
+                print(f"Playlist with id {p_id} is already present on list")
+                self.finished.emit()
+                return
+
+            self.new_playlist["enabled"] = True
+
+            CONFIG.set_playlist(self.new_playlist)
+
+            self.added_playlist.emit(self.new_playlist)
+        except:
+            pass
+        finally:
+            self.finished.emit()
