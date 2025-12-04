@@ -10,7 +10,7 @@
       "url": "https://open.spotify.com/playlist/7FOIpMWVS78vGhZzD7tBHk"
     },
     "1eA9Olb9vRuwI9e4sET6dp": {
-      "enabled": false,
+      "enabled": true,
       "id": "1eA9Olb9vRuwI9e4sET6dp",
       "owner": "Yago",
       "title": "Tame Impala",
@@ -42,7 +42,7 @@
       "url": "https://open.spotify.com/playlist/1pllwe0u8qEpqSfall2QPG"
     },
     "1q9Lhx9WJtvIPrd8KQKwNf": {
-      "enabled": true,
+      "enabled": false,
       "id": "1q9Lhx9WJtvIPrd8KQKwNf",
       "owner": "Yago",
       "title": "Gorillaz",

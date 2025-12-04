@@ -11,6 +11,9 @@ class ManageView(QtWidgets.QWidget):
 
         self.playlist_cards = []
 
+        self.logic_thread = None
+        self.worker = None
+
         main_layout = QtWidgets.QVBoxLayout(self)
 
         # Header
@@ -67,9 +70,35 @@ class ManageView(QtWidgets.QWidget):
     # TODO: Animation download this playlist and cancel button (this has to be blocking but with a worker)
     @QtCore.Slot()
     def sync_all_playlists(self):
-        for playlist in CONFIG.get_all_playlists().values():
-            if playlist.get("enabled"):
-                syncPlaylist(playlist)
+        if self.logic_thread and self.logic_thread.isRunning():
+            print("Previous all sync is still running, cancelling...")
+            return
+
+        self.logic_thread = QtCore.QThread()
+        self.worker = SyncAllPlaylistsWorker()
+        self.worker.moveToThread(self.logic_thread)
+
+        self.logic_thread.started.connect(self.worker.run)
+
+        self.worker.progress.connect(self.update_progress_bar)
+
+        self.worker.finished.connect(self.logic_thread.quit)
+
+        self.logic_thread.finished.connect(self.worker.deleteLater)
+        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
+
+        self.logic_thread.finished.connect(self._cleanup_thread)
+
+        self.synching_playlist_count = sum(
+            playlist.get("enabled", False)
+            for playlist in CONFIG.get_all_playlists().values()
+        )
+
+        self.logic_thread.start()
+
+    @QtCore.Slot(int)
+    def update_progress_bar(self, song_name: str, progress: int):
+        print(f"Downloading {song_name}...: {progress}%")
 
     @QtCore.Slot(dict)
     def add_playlist_card(self, new_playlist: PlaylistData):
@@ -79,3 +108,30 @@ class ManageView(QtWidgets.QWidget):
         )
         self.playlist_cards.append(new_card)
         self.scroll_playlists_container.add_playlist_card(new_card)
+
+    def _cleanup_thread(self):
+        self.worker = None
+        self.logic_thread = None
+
+
+# TODO: PROGRESS HAS TO ALSO REFLECT WHICH PLAYLIST IS CURRENTLY BEING SYNCHED
+class SyncAllPlaylistsWorker(QtCore.QObject):
+    finished = QtCore.Signal()
+    progress = QtCore.Signal(str, int)
+
+    def __init__(self):
+        super().__init__()
+
+    @QtCore.Slot()
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        try:
+            for playlist in CONFIG.get_all_playlists().values():
+                if playlist.get("enabled"):
+                    syncPlaylist(playlist, self.progress)
+        except:
+            pass
+        finally:
+            self.finished.emit()

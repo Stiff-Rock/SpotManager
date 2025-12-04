@@ -34,14 +34,14 @@ class AddView(QtWidgets.QWidget):
         input_layout = QtWidgets.QHBoxLayout()
 
         # Username label and input field
-        username_lbl = QtWidgets.QLabel("Username")
+        user_id_lbl = QtWidgets.QLabel("User ID")
         self.username_le = QtWidgets.QLineEdit()
         self.username_le.setText(CONFIG.get_username())
         self.username_le.editingFinished.connect(
             lambda: self._search_playlists(self.username_le.text())
         )
 
-        input_layout.addWidget(username_lbl)
+        input_layout.addWidget(user_id_lbl)
         input_layout.addWidget(self.username_le)
 
         self.main_layout.addLayout(input_layout)
@@ -92,7 +92,7 @@ class AddView(QtWidgets.QWidget):
     @QtCore.Slot(dict)
     def _add_playlist(self, new_playlist: dict):
         if self.logic_thread and self.logic_thread.isRunning():
-            print("Previous search is still running, cancelling...")
+            print("Previous adding is still running, cancelling...")
             return
 
         self.logic_thread = QtCore.QThread()

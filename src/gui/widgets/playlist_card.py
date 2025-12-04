@@ -18,6 +18,9 @@ class PlaylistCard(QtWidgets.QWidget):
 
         self.setMaximumHeight(MAX_HEIGHT)
 
+        self.logic_thread = None
+        self.worker = None
+
         self.playlist = new_playlist
 
         title = new_playlist.get("title", "N/A")
@@ -69,7 +72,7 @@ class PlaylistCard(QtWidgets.QWidget):
             buttons_layout = QtWidgets.QHBoxLayout()
 
             self.enabled_checkbox = QtWidgets.QCheckBox("Enabled: ")
-            self.enabled_checkbox.setChecked(True)
+            self.enabled_checkbox.setChecked(new_playlist.get("enabled"))
             self.enabled_checkbox.toggled.connect(self.toggle_playlist)
             buttons_layout.addWidget(self.enabled_checkbox, stretch=8)
 
@@ -102,7 +105,33 @@ class PlaylistCard(QtWidgets.QWidget):
     @QtCore.Slot(PlaylistData)
     # TODO: Animation download this playlist and cancel button (this has to be blocking but with a worker)
     def _sync_playlist(self, playlist: PlaylistData):
-        syncPlaylist(playlist)
+        if self.logic_thread and self.logic_thread.isRunning():
+            print("Previous sync is still running, cancelling...")
+            return
+
+        self.logic_thread = QtCore.QThread()
+        self.worker = SyncPlaylistsWorker(playlist)
+        self.worker.moveToThread(self.logic_thread)
+
+        self.logic_thread.started.connect(self.worker.run)
+
+        # TODO: MANAGE THIS SIGNALIN
+
+        # self.worker.progress.connect(self.update_progress_bar)
+
+        self.worker.finished.connect(self.logic_thread.quit)
+
+        self.logic_thread.finished.connect(self.worker.deleteLater)
+        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
+
+        self.logic_thread.finished.connect(self._cleanup_thread)
+
+        self.synching_playlist_count = sum(
+            playlist.get("enabled", False)
+            for playlist in CONFIG.get_all_playlists().values()
+        )
+
+        self.logic_thread.start()
 
     @QtCore.Slot(str)
     def _remove_playlist(self, p_id: str):
@@ -121,3 +150,28 @@ class PlaylistCard(QtWidgets.QWidget):
         self.on_delete.emit()
 
         self.deleteLater()
+
+    def _cleanup_thread(self):
+        self.worker = None
+        self.logic_thread = None
+
+
+class SyncPlaylistsWorker(QtCore.QObject):
+    finished = QtCore.Signal()
+    progress = QtCore.Signal(str, int)
+
+    def __init__(self, playlist):
+        super().__init__()
+        self.playlist = playlist
+
+    @QtCore.Slot()
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        try:
+            syncPlaylist(self.playlist, self.progress)
+        except:
+            pass
+        finally:
+            self.finished.emit()

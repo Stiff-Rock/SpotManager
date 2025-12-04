@@ -143,8 +143,11 @@ def init_spotdl(output_directory: str):
         spotdl = Spotdl(
             client_id=client_id,
             client_secret=client_secret,
-            downloader_settings={"output": output_directory},
+            downloader_settings={
+                "output": output_directory,
+            },
         )
+
     elif isinstance(spotdl, Spotdl):
         # Update output directory of current instance
         spotdl.downloader.settings["output"] = output_directory
@@ -152,7 +155,7 @@ def init_spotdl(output_directory: str):
         raise Exception(f"Error initialising Spotdl instance: {spotdl}")
 
 
-def syncPlaylist(playlist: PlaylistData):
+def syncPlaylist(playlist: PlaylistData, progress_signal: SignalInstance):
     print(f"\n== Starting sync for '{playlist['title']}' ==")
 
     # Get the spotdl configuration
@@ -186,7 +189,9 @@ def syncPlaylist(playlist: PlaylistData):
             return
 
         # Download each song
-        for song in songs:
+        for i, song in enumerate(songs):
+            if progress_signal:
+                progress_signal.emit(song.name, i + 1)
             download = spotdl.download(song)
             print(f"Successfully downloaded: {song.name} at {download[1]}.")
     except Exception as e:
