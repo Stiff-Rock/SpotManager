@@ -13,10 +13,10 @@ class MainWindow(QtWidgets.QWidget):
 
         tab_widget = QtWidgets.QTabWidget()
 
-        playlist_view = AddView()
-        search_view = ManageView()
+        add_view = AddView()
+        manage_view = ManageView()
 
-        tab_widget.addTab(playlist_view, "🎵 Add Playlists")
-        tab_widget.addTab(search_view, "🔍 Manage Settings")
+        tab_widget.addTab(add_view, "🔍 Search")
+        tab_widget.addTab(manage_view, "🎵 Manage")
 
         main_layout.addWidget(tab_widget)

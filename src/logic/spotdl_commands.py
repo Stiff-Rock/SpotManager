@@ -1,8 +1,12 @@
 import os
+from sys import exception
+from typing import Any
+from PySide6.QtCore import SignalInstance
 import requests
 from spotdl import Spotdl
 import spotdl.utils.config as spotDlConfig
 import spotipy
+from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 
 spotdl = None
@@ -14,7 +18,7 @@ client_secret = None
 # TODO: GET THE PLAYLISTS FROM THE PROFILE AND NOT FROM THE JSON FILE
 
 
-def get_user_playlists(user_id: str):
+def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
     global spotipy_client
 
     if not spotipy_client:
@@ -36,8 +40,21 @@ def get_user_playlists(user_id: str):
 
         spotipy_client = spotipy.Spotify(auth_manager=auth_manager)
 
-    results = spotipy_client.user_playlists(user_id)
-    all_playlists = []
+    try:
+        results = spotipy_client.user_playlists(user_id)
+    except SpotifyException as e:
+        if "http status: 404" in str(e):
+            print(f"Could not find playlists for user ID '{user_id}'.")
+            return
+        else:
+            print(f"An unexpected Spotify API error occurred: {e}")
+            return
+    except requests.HTTPError as e:
+        if e.response.status_code == 404:
+            print(f"Could not find playlists for user ID '{user_id}'.")
+            return
+        else:
+            raise
 
     while results:
         for playlist in results["items"]:
@@ -48,14 +65,13 @@ def get_user_playlists(user_id: str):
                     "total_tracks": playlist["tracks"]["total"],
                     "owner": playlist["owner"]["display_name"],
                 }
-                all_playlists.append(playlist_data)
+
+                found_playlist_signal.emit(playlist_data)
 
         if results["next"]:
             results = spotipy_client.next(results)
         else:
             results = None
-
-    return all_playlists
 
 
 def download_cover_image(output_directory, p_url):
