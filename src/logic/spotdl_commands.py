@@ -63,6 +63,7 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
                     "total_tracks": playlist["tracks"]["total"],
                     "url": playlist["external_urls"]["spotify"],
                     "id": playlist["id"],
+                    "cover_url": playlist["images"][0]["url"],
                     "enabled": True,
                 }
 
@@ -74,51 +75,17 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
             results = None
 
 
-def download_cover_image(output_directory, p_url):
+def download_cover_image(output_directory, cover_url: str):
     try:
-        global spotipy_client
+        cover_image_path = os.path.join(output_directory, "cover.jpg")
 
-        if not spotipy_client:
-            global client_id
-            global client_secret
-
-            if not client_id or not client_secret:
-                get_spotdl_config()
-
-            if not client_id or not client_secret:
-                print(
-                    f"Unable to obtain client id and secret: client_id - {client_id} | client_secret - {client_secret}"
-                )
-                return
-
-            print("Downloading playlist cover... ", end="")
-
-            # Get the cover from the spotify api
-            auth_manager = spotipy.SpotifyClientCredentials(
-                client_id=client_id, client_secret=client_secret
-            )
-            spotipy_client = spotipy.Spotify(auth_manager=auth_manager)
-
-        playlist_id = p_url.split("/")[-1].split("?")[0]
-        playlist = spotipy_client.playlist(playlist_id)
-
-        if not playlist:
-            print(f"Playlist not foudn with url {p_url}")
-            return
-
-        if playlist["images"]:
-            largest_image = max(playlist["images"], key=lambda x: x.get("width", 0))
-
-            cover_image_path = os.path.join(output_directory, "cover.jpg")
-            cover_url = largest_image["url"]
-
-            response = requests.get(cover_url)
-            if response.status_code == 200:
-                with open(cover_image_path, "wb") as file:
-                    file.write(response.content)
-                print("Done!")
-            else:
-                print(f"Failed to download cover image: {cover_url}")
+        response = requests.get(cover_url)
+        if response.status_code == 200:
+            with open(cover_image_path, "wb") as file:
+                file.write(response.content)
+            print("Done!")
+        else:
+            print(f"Failed to download cover image: {cover_url}")
     except Exception as e:
         print(f"Faield to obtain playlist cover: {e}")
 
@@ -172,7 +139,7 @@ def syncPlaylist(playlist: PlaylistData, progress_signal: SignalInstance):
     os.makedirs(output_directory, exist_ok=True)
 
     # Download the playlist cover
-    download_cover_image(output_directory, p_url)
+    download_cover_image(output_directory, playlist.get("cover_url"))
 
     # Download each song from the playlist
     global spotdl

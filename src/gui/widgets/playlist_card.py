@@ -1,10 +1,13 @@
 from typing import Literal
 from PySide6 import QtCore, QtWidgets
+from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.download_cover_worker import get_download_worker
 
 CARD_MARGIN = 10
 MAX_HEIGHT = 130
+COVER_DIMS = 90
 
 CardType = Literal["search", "manage"]
 
@@ -18,7 +21,7 @@ class PlaylistCard(QtWidgets.QWidget):
 
         self.setMaximumHeight(MAX_HEIGHT)
 
-        self.logic_thread = None
+        self._logic_thread = None
         self.worker = None
 
         self.playlist = new_playlist
@@ -33,12 +36,26 @@ class PlaylistCard(QtWidgets.QWidget):
             CARD_MARGIN, CARD_MARGIN, CARD_MARGIN, CARD_MARGIN
         )
 
-        self.playlist_card = QtWidgets.QFrame()
-        self.playlist_card.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        playlist_card = QtWidgets.QFrame()
+        playlist_card.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
 
-        top_layout.addWidget(self.playlist_card)
+        top_layout.addWidget(playlist_card)
 
-        playlist_layout = QtWidgets.QVBoxLayout(self.playlist_card)
+        horizonal_layout = QtWidgets.QHBoxLayout(playlist_card)
+
+        # Cover Image Label
+        self.image_label = QtWidgets.QLabel()
+        self.image_label.setScaledContents(True)
+        self.image_label.setFixedSize(COVER_DIMS, COVER_DIMS)
+        self.image_label.setScaledContents(True)
+
+        self.cover_img = QPixmap()
+        self._download_cover(new_playlist.get("cover_url"))
+
+        horizonal_layout.addWidget(self.image_label)
+
+        # Playlist Info Layout
+        playlist_layout = QtWidgets.QVBoxLayout()
 
         # Title Label
         title_label = QtWidgets.QLabel(f"Title: <b>{title}</b>")
@@ -60,6 +77,8 @@ class PlaylistCard(QtWidgets.QWidget):
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
         playlist_layout.addWidget(url_label)
+
+        horizonal_layout.addLayout(playlist_layout)
 
         if type == "search":
             # Add playlist button
@@ -102,36 +121,61 @@ class PlaylistCard(QtWidgets.QWidget):
 
         playlist = CONFIG.set_playlist(playlist)
 
+    @QtCore.Slot()
+    def _download_cover(self, cover_url: str):
+        if self._logic_thread and self._logic_thread.isRunning():
+            print(
+                f"Cover download for {self.playlist.get('title')} is already running."
+            )
+            return
+
+        self._logic_thread = QtCore.QThread()
+        self.worker = get_download_worker(cover_url)
+
+        self.worker.moveToThread(self._logic_thread)
+
+        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.finished.connect(self._cleanup_thread)
+
+        self.worker.finished.connect(self._logic_thread.quit)
+
+        # Custom Signals
+        self.worker.on_cover_donwloaded.connect(self._set_card_cover)
+
+        self._logic_thread.start()
+
+    @QtCore.Slot()
+    def _set_card_cover(self, img_bytes):
+        self.cover_img.loadFromData(img_bytes)
+        self.image_label.setPixmap(self.cover_img)
+
     @QtCore.Slot(PlaylistData)
     # TODO: Animation download this playlist and cancel button (this has to be blocking but with a worker)
     def _sync_playlist(self, playlist: PlaylistData):
-        if self.logic_thread and self.logic_thread.isRunning():
+        if self._logic_thread and self._logic_thread.isRunning():
             print("Previous sync is still running, cancelling...")
             return
 
-        self.logic_thread = QtCore.QThread()
+        self._logic_thread = QtCore.QThread()
         self.worker = SyncPlaylistsWorker(playlist)
-        self.worker.moveToThread(self.logic_thread)
 
-        self.logic_thread.started.connect(self.worker.run)
+        self.worker.moveToThread(self._logic_thread)
 
+        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.finished.connect(self._cleanup_thread)
+
+        self.worker.finished.connect(self._logic_thread.quit)
+
+        # Custom Signals
         # TODO: MANAGE THIS SIGNALIN
-
         # self.worker.progress.connect(self.update_progress_bar)
-
-        self.worker.finished.connect(self.logic_thread.quit)
-
-        self.logic_thread.finished.connect(self.worker.deleteLater)
-        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
-
-        self.logic_thread.finished.connect(self._cleanup_thread)
 
         self.synching_playlist_count = sum(
             playlist.get("enabled", False)
             for playlist in CONFIG.get_all_playlists().values()
         )
 
-        self.logic_thread.start()
+        self._logic_thread.start()
 
     @QtCore.Slot(str)
     def _remove_playlist(self, p_id: str):
@@ -152,15 +196,21 @@ class PlaylistCard(QtWidgets.QWidget):
         self.deleteLater()
 
     def _cleanup_thread(self):
+        if self.worker:
+            self.worker.deleteLater()
+
+        if self._logic_thread:
+            self._logic_thread.deleteLater()
+
         self.worker = None
-        self.logic_thread = None
+        self._logic_thread = None
 
 
 class SyncPlaylistsWorker(QtCore.QObject):
     finished = QtCore.Signal()
     progress = QtCore.Signal(str, int)
 
-    def __init__(self, playlist):
+    def __init__(self, playlist: PlaylistData):
         super().__init__()
         self.playlist = playlist
 
@@ -171,7 +221,9 @@ class SyncPlaylistsWorker(QtCore.QObject):
     def run(self):
         try:
             syncPlaylist(self.playlist, self.progress)
-        except:
-            pass
+        except Exception as e:
+            print(
+                f"An error occurred while synchronizing the playlist '{self.playlist.get('title')}': {e}"
+            )
         finally:
             self.finished.emit()

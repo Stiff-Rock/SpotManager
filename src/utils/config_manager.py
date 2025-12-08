@@ -13,6 +13,7 @@ class PlaylistData(TypedDict):
     url: str
     id: str
     enabled: bool
+    cover_url: str
 
 
 class ConfigSchema(TypedDict):

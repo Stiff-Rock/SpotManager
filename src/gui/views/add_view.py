@@ -5,13 +5,14 @@ from src.logic.spotdl_commands import get_user_playlists
 from src.utils.config_manager import CONFIG, PlaylistData
 
 
+# TODO: ADD SEARCH PLAYLIST NAME INPUT
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(dict)
 
     def __init__(self):
         super().__init__()
 
-        self.logic_thread = None
+        self._logic_thread = None
         self.worker = None
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -46,6 +47,12 @@ class AddView(QtWidgets.QWidget):
 
         self.main_layout.addLayout(input_layout)
 
+        search_btn = QtWidgets.QPushButton("Search")
+        search_btn.clicked.connect(
+            lambda: self._search_playlists(self.username_le.text())
+        )
+        input_layout.addWidget(search_btn)
+
         # Playlist scroll list
         self.scroll_playlists_container = ScrollPlaylistsContainer()
         self.main_layout.addWidget(self.scroll_playlists_container)
@@ -54,27 +61,29 @@ class AddView(QtWidgets.QWidget):
 
     @QtCore.Slot(str)
     def _search_playlists(self, username: str):
-        if self.logic_thread and self.logic_thread.isRunning():
+        if self._logic_thread and self._logic_thread.isRunning():
             print("Previous search is still running, cancelling...")
             return
 
-        self.logic_thread = QtCore.QThread()
+        self._logic_thread = QtCore.QThread()
         self.worker = SearchPlaylistsWorker(username)
-        self.worker.moveToThread(self.logic_thread)
 
-        self.logic_thread.started.connect(self.worker.run)
+        self.worker.moveToThread(self._logic_thread)
+
+        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.finished.connect(self._cleanup_thread)
+
+        self.worker.finished.connect(self._logic_thread.quit)
+
+        # Custom Signals
         self.worker.updated_username.connect(self._update_username)
         self.worker.found_playlist.connect(self._add_playlist_card)
-
-        self.worker.finished.connect(self.logic_thread.quit)
-
-        self.logic_thread.finished.connect(self.worker.deleteLater)
-        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
-
-        self.logic_thread.finished.connect(self._cleanup_thread)
+        # TODO: MAKE ITS OWN PROGRESS BAR, INTEAD OF USING PROGRESS, USE STARTED AND FINISH AND JUST SHOW AND HIDE PROGRESS BAR
+        # self.worker.progress.connect(self.on_update_progress.emit)
 
         self.scroll_playlists_container.reset_playlist_layout()
-        self.logic_thread.start()
+
+        self._logic_thread.start()
 
     @QtCore.Slot(dict)
     def _add_playlist_card(self, new_playlist: PlaylistData):
@@ -91,27 +100,32 @@ class AddView(QtWidgets.QWidget):
 
     @QtCore.Slot(dict)
     def _add_playlist(self, new_playlist: dict):
-        if self.logic_thread and self.logic_thread.isRunning():
+        if self._logic_thread and self._logic_thread.isRunning():
             print("Previous adding is still running, cancelling...")
             return
 
-        self.logic_thread = QtCore.QThread()
+        self._logic_thread = QtCore.QThread()
         self.worker = AddPlaylistWorker(new_playlist)
-        self.worker.moveToThread(self.logic_thread)
 
-        self.logic_thread.started.connect(self.worker.run)
+        self.worker.moveToThread(self._logic_thread)
+
+        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.finished.connect(self._cleanup_thread)
+
+        self.worker.finished.connect(self._logic_thread.quit)
+
+        # Custom Signals
         self.worker.added_playlist.connect(self.playlist_added_to_list.emit)
 
-        self.worker.finished.connect(self.logic_thread.quit)
-
-        self.logic_thread.finished.connect(self.worker.deleteLater)
-        self.logic_thread.finished.connect(self.logic_thread.deleteLater)
-
-        self.logic_thread.finished.connect(self._cleanup_thread)
-
-        self.logic_thread.start()
+        self._logic_thread.start()
 
     def _cleanup_thread(self):
+        if self.worker:
+            self.worker.deleteLater()
+
+        if self._logic_thread:
+            self._logic_thread.deleteLater()
+
         self.worker = None
         self.logic_thread = None
 
