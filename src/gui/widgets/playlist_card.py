@@ -3,7 +3,6 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.config_manager import CONFIG, PlaylistData
-from src.utils.download_cover_worker import get_download_worker
 
 CARD_MARGIN = 10
 MAX_HEIGHT = 130
@@ -16,7 +15,7 @@ class PlaylistCard(QtWidgets.QWidget):
     on_add_playlist = QtCore.Signal(dict)
     on_delete = QtCore.Signal()
 
-    def __init__(self, type: CardType, new_playlist: PlaylistData):
+    def __init__(self, type: CardType, new_playlist: PlaylistData, cover_bytes: bytes):
         super().__init__()
 
         self.setMaximumHeight(MAX_HEIGHT)
@@ -44,15 +43,16 @@ class PlaylistCard(QtWidgets.QWidget):
         horizonal_layout = QtWidgets.QHBoxLayout(playlist_card)
 
         # Cover Image Label
-        self.image_label = QtWidgets.QLabel()
-        self.image_label.setScaledContents(True)
-        self.image_label.setFixedSize(COVER_DIMS, COVER_DIMS)
-        self.image_label.setScaledContents(True)
+        image_label = QtWidgets.QLabel()
+        image_label.setScaledContents(True)
+        image_label.setFixedSize(COVER_DIMS, COVER_DIMS)
+        image_label.setScaledContents(True)
 
-        self.cover_img = QPixmap()
-        self._download_cover(new_playlist.get("cover_url"))
+        cover_img = QPixmap()
+        cover_img.loadFromData(cover_bytes)
+        image_label.setPixmap(cover_img)
 
-        horizonal_layout.addWidget(self.image_label)
+        horizonal_layout.addWidget(image_label)
 
         # Playlist Info Layout
         playlist_layout = QtWidgets.QVBoxLayout()
@@ -120,34 +120,6 @@ class PlaylistCard(QtWidgets.QWidget):
         playlist["enabled"] = enabled
 
         playlist = CONFIG.set_playlist(playlist)
-
-    @QtCore.Slot()
-    def _download_cover(self, cover_url: str):
-        if self._logic_thread and self._logic_thread.isRunning():
-            print(
-                f"Cover download for {self.playlist.get('title')} is already running."
-            )
-            return
-
-        self._logic_thread = QtCore.QThread()
-        self.worker = get_download_worker(cover_url)
-
-        self.worker.moveToThread(self._logic_thread)
-
-        self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
-
-        self.worker.finished.connect(self._logic_thread.quit)
-
-        # Custom Signals
-        self.worker.on_cover_donwloaded.connect(self._set_card_cover)
-
-        self._logic_thread.start()
-
-    @QtCore.Slot()
-    def _set_card_cover(self, img_bytes):
-        self.cover_img.loadFromData(img_bytes)
-        self.image_label.setPixmap(self.cover_img)
 
     @QtCore.Slot(PlaylistData)
     # TODO: Animation download this playlist and cancel button (this has to be blocking but with a worker)

@@ -1,4 +1,23 @@
 {
   "username": "4jhs7q97i1u7csh78ryakbvhb",
-  "playlists": {}
+  "playlists": {
+    "2JpQBKcRAVpzAo2Bf8UUIb": {
+      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da840c34943899126f19cb3bcd5b",
+      "enabled": true,
+      "id": "2JpQBKcRAVpzAo2Bf8UUIb",
+      "owner": "Yago",
+      "title": " New Age - 25/26",
+      "total_tracks": 27,
+      "url": "https://open.spotify.com/playlist/2JpQBKcRAVpzAo2Bf8UUIb"
+    },
+    "74OQqzyKSAKWxhVvJVxoha": {
+      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8435aaa7e565b475935cdc8898",
+      "enabled": true,
+      "id": "74OQqzyKSAKWxhVvJVxoha",
+      "owner": "Yago",
+      "title": "Pt. 2 - 24/25",
+      "total_tracks": 80,
+      "url": "https://open.spotify.com/playlist/74OQqzyKSAKWxhVvJVxoha"
+    }
+  }
 }

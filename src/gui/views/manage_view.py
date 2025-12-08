@@ -1,3 +1,4 @@
+import requests
 from PySide6 import QtCore, QtGui, QtWidgets
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
@@ -56,14 +57,29 @@ class ManageView(QtWidgets.QWidget):
         self.parse_playlists()
 
     def parse_playlists(self):
-        current_playlists = CONFIG.get_all_playlists()
-
-        if current_playlists is None:
-            print("Unable to show saved playlists: Non existent key on json file")
+        if self._logic_thread and self._logic_thread.isRunning():
             return
 
-        for playlist in current_playlists.values():
-            self.add_playlist_card(playlist)
+        self._logic_thread = QtCore.QThread()
+        self.worker = AddPlaylistCardWorker()
+
+        self.worker.moveToThread(self._logic_thread)
+
+        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.finished.connect(self._cleanup_thread)
+
+        self.worker.finished.connect(self._logic_thread.quit)
+
+        # Custom Signals
+        self.worker.progress.connect(self.on_update_progress.emit)
+        self.worker.on_add_playlist.connect(lambda p, c: self.add_playlist_card(p, c))
+
+        self.synching_playlist_count = sum(
+            playlist.get("enabled", False)
+            for playlist in CONFIG.get_all_playlists().values()
+        )
+
+        self._logic_thread.start()
 
     @QtCore.Slot()
     def toggle_all_playlist(self, enabled: bool):
@@ -97,8 +113,8 @@ class ManageView(QtWidgets.QWidget):
         self._logic_thread.start()
 
     @QtCore.Slot(dict)
-    def add_playlist_card(self, new_playlist: PlaylistData):
-        new_card = PlaylistCard("manage", new_playlist)
+    def add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
+        new_card = PlaylistCard("manage", new_playlist, cover_bytes)
         new_card.on_delete.connect(
             lambda card=new_card: self.playlist_cards.remove(card)
         )
@@ -106,6 +122,12 @@ class ManageView(QtWidgets.QWidget):
         self.scroll_playlists_container.add_playlist_card(new_card)
 
     def _cleanup_thread(self):
+        if self.worker:
+            self.worker.deleteLater()
+
+        if self._logic_thread:
+            self._logic_thread.deleteLater()
+
         self.worker = None
         self._logic_thread = None
 
@@ -126,6 +148,39 @@ class SyncAllPlaylistsWorker(QtCore.QObject):
             for playlist in CONFIG.get_all_playlists().values():
                 if playlist.get("enabled"):
                     syncPlaylist(playlist, self.progress)
+        except:
+            pass
+        finally:
+            self.finished.emit()
+
+
+class AddPlaylistCardWorker(QtCore.QObject):
+    finished = QtCore.Signal()
+    # TODO: PROGRESS
+    progress = QtCore.Signal(str, int)
+    on_add_playlist = QtCore.Signal(PlaylistData, bytes)
+
+    def __init__(self):
+        super().__init__()
+
+    @QtCore.Slot()
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        try:
+            current_playlists = CONFIG.get_all_playlists()
+
+            if current_playlists is None:
+                print("Unable to show saved playlists: Non existent key on json file")
+                return
+
+            for playlist in current_playlists.values():
+                response = requests.get(playlist.get("cover_url"))
+                cover_bytes = bytes()
+                if response.status_code == 200:
+                    cover_bytes = response.content
+                self.on_add_playlist.emit(playlist, cover_bytes)
         except:
             pass
         finally:

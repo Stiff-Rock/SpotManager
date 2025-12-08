@@ -31,27 +31,49 @@ class AddView(QtWidgets.QWidget):
         header_layout.addWidget(header_lbl)
         self.main_layout.addLayout(header_layout)
 
-        # Top input fields
+        # Username label, input field and search button
         input_layout = QtWidgets.QHBoxLayout()
 
-        # Username label and input field
         user_id_lbl = QtWidgets.QLabel("User ID")
+        input_layout.addWidget(user_id_lbl)
+
         self.username_le = QtWidgets.QLineEdit()
         self.username_le.setText(CONFIG.get_username())
         self.username_le.editingFinished.connect(
             lambda: self._search_playlists(self.username_le.text())
         )
-
-        input_layout.addWidget(user_id_lbl)
+        self.username_le.setPlaceholderText("Spotify User Id")
         input_layout.addWidget(self.username_le)
+
+        search_user_btn = QtWidgets.QPushButton("Load")
+        search_user_btn.clicked.connect(
+            lambda: self._search_playlists(self.username_le.text())
+        )
+        input_layout.addWidget(search_user_btn)
 
         self.main_layout.addLayout(input_layout)
 
-        search_btn = QtWidgets.QPushButton("Search")
+        # Search bar and search button
+        seach_layout = QtWidgets.QHBoxLayout()
+
+        self.playlist_le = QtWidgets.QLineEdit()
+        # self.playlist_le.editingFinished.connect()
+        self.playlist_le.setPlaceholderText("Filter by playlist name")
+        seach_layout.addWidget(self.playlist_le)
+
+        search_song_btn = QtWidgets.QPushButton("Search Playlist")
+        search_song_btn.clicked.connect(
+            lambda: self._search_playlists(self.username_le.text())
+        )
+        seach_layout.addWidget(search_user_btn)
+
+        search_btn = QtWidgets.QPushButton("")
         search_btn.clicked.connect(
             lambda: self._search_playlists(self.username_le.text())
         )
-        input_layout.addWidget(search_btn)
+        seach_layout.addWidget(search_btn)
+
+        self.main_layout.addLayout(seach_layout)
 
         # Playlist scroll list
         self.scroll_playlists_container = ScrollPlaylistsContainer()
@@ -86,11 +108,11 @@ class AddView(QtWidgets.QWidget):
         self._logic_thread.start()
 
     @QtCore.Slot(dict)
-    def _add_playlist_card(self, new_playlist: PlaylistData):
+    def _add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
         if not self.scroll_playlists_container:
             return
 
-        playlist_card = PlaylistCard("search", new_playlist)
+        playlist_card = PlaylistCard("search", new_playlist, cover_bytes)
         playlist_card.on_add_playlist.connect(self._add_playlist)
         self.scroll_playlists_container.add_playlist_card(playlist_card)
 
@@ -127,12 +149,12 @@ class AddView(QtWidgets.QWidget):
             self._logic_thread.deleteLater()
 
         self.worker = None
-        self.logic_thread = None
+        self._logic_thread = None
 
 
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
-    found_playlist = QtCore.Signal(PlaylistData)
+    found_playlist = QtCore.Signal(PlaylistData, bytes)
     progress = QtCore.Signal(int)
     finished = QtCore.Signal()
 

@@ -67,7 +67,12 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
                     "enabled": True,
                 }
 
-                found_playlist_signal.emit(playlist_data)
+                response = requests.get(playlist_data.get("cover_url"))
+                cover_bytes = bytes()
+                if response.status_code == 200:
+                    cover_bytes = response.content
+
+                found_playlist_signal.emit(playlist_data, cover_bytes)
 
         if results["next"]:
             results = spotipy_client.next(results)
