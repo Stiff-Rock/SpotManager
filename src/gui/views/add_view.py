@@ -3,11 +3,12 @@ from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import get_user_playlists
 from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.utils import cleanup_thread
 
 
 # TODO: ADD SEARCH PLAYLIST NAME INPUT
 class AddView(QtWidgets.QWidget):
-    playlist_added_to_list = QtCore.Signal(dict)
+    playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
 
     def __init__(self):
         super().__init__()
@@ -93,7 +94,9 @@ class AddView(QtWidgets.QWidget):
         self.worker.moveToThread(self._logic_thread)
 
         self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
+        self._logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        )
 
         self.worker.finished.connect(self._logic_thread.quit)
 
@@ -121,18 +124,20 @@ class AddView(QtWidgets.QWidget):
         self.username_le.setText(new_username)
 
     @QtCore.Slot(dict)
-    def _add_playlist(self, new_playlist: dict):
+    def _add_playlist(self, new_playlist: PlaylistData, cover_bytes: bytes):
         if self._logic_thread and self._logic_thread.isRunning():
             print("Previous adding is still running, cancelling...")
             return
 
         self._logic_thread = QtCore.QThread()
-        self.worker = AddPlaylistWorker(new_playlist)
+        self.worker = AddPlaylistWorker(new_playlist, cover_bytes)
 
         self.worker.moveToThread(self._logic_thread)
 
         self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
+        self._logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        )
 
         self.worker.finished.connect(self._logic_thread.quit)
 
@@ -140,16 +145,6 @@ class AddView(QtWidgets.QWidget):
         self.worker.added_playlist.connect(self.playlist_added_to_list.emit)
 
         self._logic_thread.start()
-
-    def _cleanup_thread(self):
-        if self.worker:
-            self.worker.deleteLater()
-
-        if self._logic_thread:
-            self._logic_thread.deleteLater()
-
-        self.worker = None
-        self._logic_thread = None
 
 
 class SearchPlaylistsWorker(QtCore.QObject):
@@ -197,11 +192,12 @@ class SearchPlaylistsWorker(QtCore.QObject):
 
 class AddPlaylistWorker(QtCore.QObject):
     finished = QtCore.Signal()
-    added_playlist = QtCore.Signal(PlaylistData)
+    added_playlist = QtCore.Signal(PlaylistData, bytes)
 
-    def __init__(self, new_playlist):
+    def __init__(self, new_playlist: PlaylistData, cover_bytes: bytes):
         super().__init__()
-        self.new_playlist: PlaylistData = new_playlist
+        self.new_playlist = new_playlist
+        self.cover_bytes = cover_bytes
 
     @QtCore.Slot()
     def cancel(self):
@@ -227,7 +223,7 @@ class AddPlaylistWorker(QtCore.QObject):
 
             CONFIG.set_playlist(self.new_playlist)
 
-            self.added_playlist.emit(self.new_playlist)
+            self.added_playlist.emit(self.new_playlist, self.cover_bytes)
         except:
             pass
         finally:

@@ -47,6 +47,7 @@ class ScrollPlaylistsContainer(QtWidgets.QWidget):
         if not self.playlists_container_layout:
             return
 
+        # Always add on top
         self.playlists_container_layout.insertWidget(
             self.playlists_container_layout.count() - 1, playlist_card
         )

@@ -1,4 +1,5 @@
 import os
+import re
 from PySide6.QtCore import SignalInstance
 import requests
 from spotdl import Spotdl
@@ -6,7 +7,6 @@ import spotdl.utils.config as spotDlConfig
 import spotipy
 from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
-
 from src.utils.config_manager import PlaylistData
 
 spotdl = None
@@ -57,7 +57,9 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
     while results:
         for playlist in results["items"]:
             if playlist.get("public", True):
+                # TODO: ENSURE THAT PRIORITY VALUE IS SET AFTER ADDING TO LIST CARD
                 playlist_data: PlaylistData = {
+                    "priority": -1,
                     "owner": playlist["owner"]["display_name"],
                     "title": playlist["name"],
                     "total_tracks": playlist["tracks"]["total"],
@@ -80,15 +82,18 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
             results = None
 
 
-def download_cover_image(output_directory, cover_url: str):
+def download_cover_image(output_directory, cover_url: str) -> None:
     try:
         cover_image_path = os.path.join(output_directory, "cover.jpg")
+
+        if os.path.exists(cover_image_path):
+            print(f"Cover image already exists at: {cover_image_path}")
+            return
 
         response = requests.get(cover_url)
         if response.status_code == 200:
             with open(cover_image_path, "wb") as file:
                 file.write(response.content)
-            print("Done!")
         else:
             print(f"Failed to download cover image: {cover_url}")
     except Exception as e:
@@ -127,7 +132,9 @@ def init_spotdl(output_directory: str):
         raise Exception(f"Error initialising Spotdl instance: {spotdl}")
 
 
-def syncPlaylist(playlist: PlaylistData, progress_signal: SignalInstance):
+def syncPlaylist(
+    playlist: PlaylistData, progress_signal: SignalInstance, playlist_index: int = -1
+):
     print(f"\n== Starting sync for '{playlist['title']}' ==")
 
     # Get the spotdl configuration
@@ -135,7 +142,7 @@ def syncPlaylist(playlist: PlaylistData, progress_signal: SignalInstance):
     p_url = playlist["url"]
 
     # Configured output directory for downloads
-    output_directory = f"playlists/{p_title}"
+    output_directory = f"playlists/{_sanitize_filename(p_title)}"
 
     # Get the spotdl instance
     init_spotdl(output_directory)
@@ -161,9 +168,14 @@ def syncPlaylist(playlist: PlaylistData, progress_signal: SignalInstance):
             return
 
         # Download each song
+        # TODO: ADD PLAYIST NAME ALSO
+        total_tracks = len(songs)
         for i, song in enumerate(songs):
             if progress_signal:
-                progress_signal.emit(song.name, i + 1)
+                message = (
+                    f"{p_title} : synchronizing {song.name}... {i + 1}/{total_tracks}"
+                )
+                progress_signal.emit(message, playlist_index)
             download = spotdl.download(song)
             print(f"Successfully downloaded: {song.name} at {download[1]}.")
     except Exception as e:
@@ -188,3 +200,36 @@ def get_spotdl_config():
 
     client_id = config["client_id"]
     client_secret = config["client_secret"]
+
+
+def _sanitize_filename(filename: str, max_length: int = 100) -> str:
+    """
+    Sanitiza una cadena para usarla como nombre de archivo/directorio.
+
+    1. Elimina caracteres no válidos para sistemas de archivos comunes.
+    2. Reemplaza espacios con guiones bajos (opcional, pero ayuda).
+    3. Recorta la cadena a una longitud máxima.
+    """
+
+    # 1. Reemplazar caracteres ilegales con un guion bajo '_'
+    # Caracteres ilegales comunes: / \ : * ? " < > |
+    # También incluimos caracteres de control (0x00-0x1F)
+    safe_filename = re.sub(r'[\\/:*?"<>|]+', "_", filename)
+
+    # Opcional: Eliminar espacios iniciales/finales y múltiples guiones
+    safe_filename = safe_filename.strip()
+    safe_filename = re.sub(r"_{2,}", "_", safe_filename)
+
+    # 2. Recortar la longitud
+    if len(safe_filename) > max_length:
+        safe_filename = safe_filename[:max_length]
+        # Asegurarse de que el recorte no termine en un guion
+        if safe_filename.endswith("_"):
+            safe_filename = safe_filename[:-1]
+
+    # También eliminar nombres reservados de Windows (CON, PRN, AUX, etc.)
+    reserved_names = {"CON", "PRN", "AUX", "NUL", "COM1", "LPT1"}
+    if safe_filename.upper() in reserved_names:
+        safe_filename = "_" + safe_filename
+
+    return safe_filename

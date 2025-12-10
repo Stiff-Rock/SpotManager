@@ -3,6 +3,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.utils import cleanup_thread
 
 CARD_MARGIN = 10
 MAX_HEIGHT = 130
@@ -12,7 +13,7 @@ CardType = Literal["search", "manage"]
 
 
 class PlaylistCard(QtWidgets.QWidget):
-    on_add_playlist = QtCore.Signal(dict)
+    on_add_playlist = QtCore.Signal(PlaylistData, bytes)
     on_delete = QtCore.Signal()
 
     def __init__(self, type: CardType, new_playlist: PlaylistData, cover_bytes: bytes):
@@ -84,7 +85,9 @@ class PlaylistCard(QtWidgets.QWidget):
             # Add playlist button
             add_btn = QtWidgets.QPushButton("Add")
             add_btn.clicked.connect(
-                lambda _, p=self.playlist: self.on_add_playlist.emit(p)
+                lambda _, p=self.playlist, b=cover_bytes: self.on_add_playlist.emit(
+                    p, b
+                )
             )
             playlist_layout.addWidget(add_btn)
         else:
@@ -94,6 +97,18 @@ class PlaylistCard(QtWidgets.QWidget):
             self.enabled_checkbox.setChecked(new_playlist.get("enabled"))
             self.enabled_checkbox.toggled.connect(self.toggle_playlist)
             buttons_layout.addWidget(self.enabled_checkbox, stretch=8)
+
+            priority_up_btn = QtWidgets.QPushButton("↑")
+            priority_up_btn.clicked.connect(
+                lambda _, p=new_playlist: self._change_playlist_priority(p, -1)
+            )
+            buttons_layout.addWidget(priority_up_btn, stretch=1)
+
+            priority_down_btn = QtWidgets.QPushButton("↓")
+            priority_down_btn.clicked.connect(
+                lambda _, p=new_playlist: self._change_playlist_priority(p, 1)
+            )
+            buttons_layout.addWidget(priority_down_btn, stretch=1)
 
             sync_btn = QtWidgets.QPushButton("Sync")
             sync_btn.clicked.connect(lambda _, p=new_playlist: self._sync_playlist(p))
@@ -134,7 +149,9 @@ class PlaylistCard(QtWidgets.QWidget):
         self.worker.moveToThread(self._logic_thread)
 
         self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
+        self._logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        )
 
         self.worker.finished.connect(self._logic_thread.quit)
 
@@ -167,15 +184,23 @@ class PlaylistCard(QtWidgets.QWidget):
 
         self.deleteLater()
 
-    def _cleanup_thread(self):
-        if self.worker:
-            self.worker.deleteLater()
+    @QtCore.Slot()
+    def _change_playlist_priority(self, playlist: PlaylistData, change: int):
+        old_priority = playlist.get("priority")
+        new_priority = old_priority + change
 
-        if self._logic_thread:
-            self._logic_thread.deleteLater()
+        if new_priority <= 0:
+            print(f"Ignoring priority change of playlist {playlist.get('title')}")
+            return
 
-        self.worker = None
-        self._logic_thread = None
+        CONFIG.set_playlist_priority(playlist.get("id"), new_priority)
+
+        parent_widget = self.parent()
+        children_list = parent_widget.children()
+        child_to_move = children_list.pop(old_priority)
+        children_list.insert(new_priority, child_to_move)
+
+        print(f"parent_widget {parent_widget}")
 
 
 class SyncPlaylistsWorker(QtCore.QObject):

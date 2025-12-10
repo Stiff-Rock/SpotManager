@@ -7,6 +7,7 @@ CONFIG_FILE_PATH = Path("playlists.json")
 
 
 class PlaylistData(TypedDict):
+    priority: int
     owner: str
     title: str
     total_tracks: int
@@ -43,6 +44,12 @@ class ConfigManager:
 
     def _save_config(self, data):
         try:
+            playlist_items = data["playlists"].items()
+            sorted_playlists = sorted(
+                playlist_items, key=lambda item: item[1]["priority"], reverse=False
+            )
+            ordered_playlists_dict = dict(sorted_playlists)
+            data["playlists"] = ordered_playlists_dict
             with open(CONFIG_FILE_PATH, "w") as f:
                 json.dump(data, f, indent=2)
         except IOError as e:
@@ -85,7 +92,16 @@ class ConfigManager:
         """Set a specific playlist value"""
         if "playlists" not in self._data or self._data["playlists"] is None:
             self._data["playlists"] = {}
+
         self._data["playlists"][new_playlist.get("id")] = new_playlist
+        self._save_config(self._data)
+
+    def set_playlist_priority(self, p_id: str, priority: int):
+        """Set the priority of a playlist"""
+        if "playlists" not in self._data or self._data["playlists"] is None:
+            self._data["playlists"] = {}
+
+        self._data["playlists"][p_id]["priority"] = priority
         self._save_config(self._data)
 
 

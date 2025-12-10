@@ -21,16 +21,16 @@ class MainWindow(QtWidgets.QWidget):
 
         tab_widget = QtWidgets.QTabWidget()
 
-        self.loading_overlay = LoadingOverlay(parent=self)
+        self.loading_overlay = LoadingOverlay(True, parent=self)
         self.loading_overlay.on_cancel.connect(self.cancel_process)
         self.loading_overlay.hide()
 
         self.manage_view = ManageView()
         self.manage_view.on_process_start.connect(lambda: self.loading_overlay.show())
+        self.manage_view.on_update_progress.connect(self.loading_overlay.set_message)
         self.manage_view.on_process_finish.connect(lambda: self.loading_overlay.hide())
 
         self.add_view = AddView()
-
         self.add_view.playlist_added_to_list.connect(self.manage_view.add_playlist_card)
 
         tab_widget.addTab(self.manage_view, "🎵 Manage")

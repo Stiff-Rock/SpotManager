@@ -1,15 +1,18 @@
+import enum
 import requests
 from PySide6 import QtCore, QtGui, QtWidgets
+from src.gui.widgets.loading_overlay import LoadingOverlay
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.utils import cleanup_thread
 
 
 class ManageView(QtWidgets.QWidget):
     on_process_start = QtCore.Signal()
     on_process_finish = QtCore.Signal()
-    on_update_progress = QtCore.Signal(str, int)
+    on_update_progress = QtCore.Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -29,6 +32,10 @@ class ManageView(QtWidgets.QWidget):
         font.setPointSize(18)
         header_lbl.setFont(font)
         main_layout.addWidget(header_lbl)
+
+        self.local_loading_overlay = LoadingOverlay(False)
+        self.local_loading_overlay.hide()
+        main_layout.addWidget(self.local_loading_overlay)
 
         self.scroll_playlists_container = ScrollPlaylistsContainer()
         main_layout.addWidget(self.scroll_playlists_container)
@@ -56,30 +63,30 @@ class ManageView(QtWidgets.QWidget):
 
         self.parse_playlists()
 
+    # TODO: CACHE THE ITEMS SO NO NEED TO RE-MAKE
     def parse_playlists(self):
         if self._logic_thread and self._logic_thread.isRunning():
             return
 
         self._logic_thread = QtCore.QThread()
-        self.worker = AddPlaylistCardWorker()
+        self.worker = AddPlaylistCardsWorker()
 
         self.worker.moveToThread(self._logic_thread)
 
         self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
+        self._logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        )
 
         self.worker.finished.connect(self._logic_thread.quit)
 
         # Custom Signals
-        self.worker.progress.connect(self.on_update_progress.emit)
-        self.worker.on_add_playlist.connect(lambda p, c: self.add_playlist_card(p, c))
-
-        self.synching_playlist_count = sum(
-            playlist.get("enabled", False)
-            for playlist in CONFIG.get_all_playlists().values()
-        )
+        self.worker.on_add_playlist.connect(self.add_playlist_card)
+        self.worker.progress.connect(self.local_loading_overlay.set_message)
+        self.worker.finished.connect(lambda: self.local_loading_overlay.hide())
 
         self._logic_thread.start()
+        self.local_loading_overlay.show()
 
     @QtCore.Slot()
     def toggle_all_playlist(self, enabled: bool):
@@ -93,26 +100,36 @@ class ManageView(QtWidgets.QWidget):
             return
 
         self._logic_thread = QtCore.QThread()
+
         self.worker = SyncAllPlaylistsWorker()
 
         self.worker.moveToThread(self._logic_thread)
 
         self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(self._cleanup_thread)
+        self._logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        )
 
         self.worker.finished.connect(self._logic_thread.quit)
 
         # Custom Signals
-        self.worker.progress.connect(self.on_update_progress.emit)
-
-        self.synching_playlist_count = sum(
+        self.enabled_playlist_count = sum(
             playlist.get("enabled", False)
             for playlist in CONFIG.get_all_playlists().values()
         )
 
-        self._logic_thread.start()
+        self.worker.progress.connect(self._update_sync_loading_msg)
+        self.worker.finished.connect(self.on_process_finish.emit)
 
-    @QtCore.Slot(dict)
+        self._logic_thread.start()
+        self.on_process_start.emit()
+
+    QtCore.Slot(str, int)
+
+    def _update_sync_loading_msg(self, msg: str, p_i: int):
+        self.on_update_progress.emit(f"({p_i}/{self.enabled_playlist_count}) {msg}")
+
+    @QtCore.Slot(PlaylistData, bytes)
     def add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
         new_card = PlaylistCard("manage", new_playlist, cover_bytes)
         new_card.on_delete.connect(
@@ -120,16 +137,6 @@ class ManageView(QtWidgets.QWidget):
         )
         self.playlist_cards.append(new_card)
         self.scroll_playlists_container.add_playlist_card(new_card)
-
-    def _cleanup_thread(self):
-        if self.worker:
-            self.worker.deleteLater()
-
-        if self._logic_thread:
-            self._logic_thread.deleteLater()
-
-        self.worker = None
-        self._logic_thread = None
 
 
 class SyncAllPlaylistsWorker(QtCore.QObject):
@@ -145,19 +152,21 @@ class SyncAllPlaylistsWorker(QtCore.QObject):
 
     def run(self):
         try:
+            counter = 0
             for playlist in CONFIG.get_all_playlists().values():
                 if playlist.get("enabled"):
-                    syncPlaylist(playlist, self.progress)
+                    counter += 1
+                    syncPlaylist(playlist, self.progress, counter)
+                    # TODO: IMPROVE THE MESSAGE AND THE LOADER LAYOUT
         except:
             pass
         finally:
             self.finished.emit()
 
 
-class AddPlaylistCardWorker(QtCore.QObject):
+class AddPlaylistCardsWorker(QtCore.QObject):
     finished = QtCore.Signal()
-    # TODO: PROGRESS
-    progress = QtCore.Signal(str, int)
+    progress = QtCore.Signal(str)
     on_add_playlist = QtCore.Signal(PlaylistData, bytes)
 
     def __init__(self):
@@ -175,12 +184,19 @@ class AddPlaylistCardWorker(QtCore.QObject):
                 print("Unable to show saved playlists: Non existent key on json file")
                 return
 
-            for playlist in current_playlists.values():
+            for i, playlist in enumerate(current_playlists.values()):
                 response = requests.get(playlist.get("cover_url"))
-                cover_bytes = bytes()
+
+                cover_bytes = None
                 if response.status_code == 200:
-                    cover_bytes = response.content
+                    cover_bytes = response.content or bytes()
+                else:
+                    cover_bytes = bytes()
+
                 self.on_add_playlist.emit(playlist, cover_bytes)
+                self.progress.emit(
+                    f"Loading playlist... {i + 1}/{len(current_playlists)}"
+                )
         except:
             pass
         finally:
