@@ -1,3 +1,4 @@
+import threading
 from typing import Literal
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPixmap
@@ -205,19 +206,20 @@ class PlaylistCard(QtWidgets.QWidget):
 
 class SyncPlaylistsWorker(QtCore.QObject):
     finished = QtCore.Signal()
-    progress = QtCore.Signal(str, int)
+    progress = QtCore.Signal(list)
 
     def __init__(self, playlist: PlaylistData):
         super().__init__()
         self.playlist = playlist
+        self.cancel_event = threading.Event()
 
     @QtCore.Slot()
     def cancel(self):
-        self._is_cancelled = True
+        self.cancel_event.set()
 
     def run(self):
         try:
-            syncPlaylist(self.playlist, self.progress)
+            syncPlaylist(self.playlist, 1, 1, self.progress, self.cancel_event.set())
         except Exception as e:
             print(
                 f"An error occurred while synchronizing the playlist '{self.playlist.get('title')}': {e}"

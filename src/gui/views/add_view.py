@@ -1,3 +1,4 @@
+import threading
 from PySide6 import QtCore, QtGui, QtWidgets
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
@@ -7,6 +8,7 @@ from src.utils.utils import cleanup_thread
 
 
 # TODO: ADD SEARCH PLAYLIST NAME INPUT
+# TODO: LOCAL LOADING INDICATOR
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
 
@@ -58,21 +60,15 @@ class AddView(QtWidgets.QWidget):
         seach_layout = QtWidgets.QHBoxLayout()
 
         self.playlist_le = QtWidgets.QLineEdit()
-        # self.playlist_le.editingFinished.connect()
+        # TODO: self.playlist_le.editingFinished.connect()
         self.playlist_le.setPlaceholderText("Filter by playlist name")
         seach_layout.addWidget(self.playlist_le)
 
         search_song_btn = QtWidgets.QPushButton("Search Playlist")
         search_song_btn.clicked.connect(
-            lambda: self._search_playlists(self.username_le.text())
+            lambda: self._search_playlists(self.playlist_le.text())
         )
-        seach_layout.addWidget(search_user_btn)
-
-        search_btn = QtWidgets.QPushButton("")
-        search_btn.clicked.connect(
-            lambda: self._search_playlists(self.username_le.text())
-        )
-        seach_layout.addWidget(search_btn)
+        seach_layout.addWidget(search_song_btn)
 
         self.main_layout.addLayout(seach_layout)
 
@@ -85,7 +81,7 @@ class AddView(QtWidgets.QWidget):
     @QtCore.Slot(str)
     def _search_playlists(self, username: str):
         if self._logic_thread and self._logic_thread.isRunning():
-            print("Previous search is still running, cancelling...")
+            print("Can't search playlists, logic thread is currently busy")
             return
 
         self._logic_thread = QtCore.QThread()
@@ -102,7 +98,7 @@ class AddView(QtWidgets.QWidget):
 
         # Custom Signals
         self.worker.updated_username.connect(self._update_username)
-        self.worker.found_playlist.connect(self._add_playlist_card)
+        self.worker.found_playlist.connect(self._add_search_playlist_card)
         # TODO: MAKE ITS OWN PROGRESS BAR, INTEAD OF USING PROGRESS, USE STARTED AND FINISH AND JUST SHOW AND HIDE PROGRESS BAR
         # self.worker.progress.connect(self.on_update_progress.emit)
 
@@ -111,12 +107,12 @@ class AddView(QtWidgets.QWidget):
         self._logic_thread.start()
 
     @QtCore.Slot(dict)
-    def _add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
+    def _add_search_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
         if not self.scroll_playlists_container:
             return
 
         playlist_card = PlaylistCard("search", new_playlist, cover_bytes)
-        playlist_card.on_add_playlist.connect(self._add_playlist)
+        playlist_card.on_add_playlist.connect(self._add_playlist_to_collection)
         self.scroll_playlists_container.add_playlist_card(playlist_card)
 
     @QtCore.Slot(str)
@@ -124,13 +120,15 @@ class AddView(QtWidgets.QWidget):
         self.username_le.setText(new_username)
 
     @QtCore.Slot(dict)
-    def _add_playlist(self, new_playlist: PlaylistData, cover_bytes: bytes):
+    def _add_playlist_to_collection(
+        self, new_playlist: PlaylistData, cover_bytes: bytes
+    ):
         if self._logic_thread and self._logic_thread.isRunning():
-            print("Previous adding is still running, cancelling...")
+            print("Can't add plylist, logic thread is currently busy")
             return
 
         self._logic_thread = QtCore.QThread()
-        self.worker = AddPlaylistWorker(new_playlist, cover_bytes)
+        self.worker = AddPlaylistToCollectionWorker(new_playlist, cover_bytes)
 
         self.worker.moveToThread(self._logic_thread)
 
@@ -142,11 +140,15 @@ class AddView(QtWidgets.QWidget):
         self.worker.finished.connect(self._logic_thread.quit)
 
         # Custom Signals
-        self.worker.added_playlist.connect(self.playlist_added_to_list.emit)
+        self.worker.added_playlist_to_collection.connect(
+            self.playlist_added_to_list.emit
+        )
 
         self._logic_thread.start()
 
 
+# TODO: SEARCH AND ADD SHOULD WORK ON DIFFERENT THREADS
+# TODO: SHOW LOCAL LOADER AND AND MAKE IT CANCELLABLE
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
     found_playlist = QtCore.Signal(PlaylistData, bytes)
@@ -156,11 +158,11 @@ class SearchPlaylistsWorker(QtCore.QObject):
     def __init__(self, username: str):
         super().__init__()
         self.username = username
-        self._is_cancelled = False
+        self.cancel_event = threading.Event()
 
     @QtCore.Slot()
     def cancel(self):
-        self._is_cancelled = True
+        self.cancel_event.set()
 
     def run(self):
         try:
@@ -183,16 +185,16 @@ class SearchPlaylistsWorker(QtCore.QObject):
                 self.finished.emit()
                 return
 
-            get_user_playlists(self.username, self.found_playlist)
+            get_user_playlists(self.username, self.found_playlist, self.cancel_event)
         except:
             pass
         finally:
             self.finished.emit()
 
 
-class AddPlaylistWorker(QtCore.QObject):
+class AddPlaylistToCollectionWorker(QtCore.QObject):
     finished = QtCore.Signal()
-    added_playlist = QtCore.Signal(PlaylistData, bytes)
+    added_playlist_to_collection = QtCore.Signal(PlaylistData, bytes)
 
     def __init__(self, new_playlist: PlaylistData, cover_bytes: bytes):
         super().__init__()
@@ -223,8 +225,8 @@ class AddPlaylistWorker(QtCore.QObject):
 
             CONFIG.set_playlist(self.new_playlist)
 
-            self.added_playlist.emit(self.new_playlist, self.cover_bytes)
-        except:
-            pass
+            self.added_playlist_to_collection.emit(self.new_playlist, self.cover_bytes)
+        except Exception as e:
+            print(f"Error while adding playlist to collection: {e}")
         finally:
             self.finished.emit()

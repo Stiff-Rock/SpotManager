@@ -6,6 +6,7 @@ from PySide6 import QtCore
 PLAYLISTS_JSON_PATH = "playlists.json"
 
 
+@QtCore.Slot()
 def cleanup_thread(
     caller_instance: Any, worker_attr_name: str, thread_attr_name: str
 ) -> None:

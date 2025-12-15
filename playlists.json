@@ -1,85 +1,25 @@
 {
   "username": "4jhs7q97i1u7csh78ryakbvhb",
   "playlists": {
-    "72q1wcNqeiYVYzpQoCnVCe": {
-      "priority": 4,
-      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84ab454ca404618b5ebf28c170",
-      "enabled": false,
-      "id": "72q1wcNqeiYVYzpQoCnVCe",
+    "5EB3Jvp0ZdzRm2dJyJfXmd": {
+      "priority": 0,
       "owner": "Yago",
-      "title": "Start - 23/24",
-      "total_tracks": 82,
-      "url": "https://open.spotify.com/playlist/72q1wcNqeiYVYzpQoCnVCe"
-    },
-    "2JpQBKcRAVpzAo2Bf8UUIb": {
-      "priority": 5,
-      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da840c34943899126f19cb3bcd5b",
-      "enabled": false,
-      "id": "2JpQBKcRAVpzAo2Bf8UUIb",
-      "owner": "Yago",
-      "title": "New Age - 25/26",
-      "total_tracks": 27,
-      "url": "https://open.spotify.com/playlist/2JpQBKcRAVpzAo2Bf8UUIb"
-    },
-    "0Nqqrkzet7h3uBbiAlFHyp": {
-      "priority": 5,
-      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da844293d2a82773e866be26f070",
-      "enabled": false,
-      "id": "0Nqqrkzet7h3uBbiAlFHyp",
-      "owner": "Yago",
-      "title": "Breakcore",
-      "total_tracks": 73,
-      "url": "https://open.spotify.com/playlist/0Nqqrkzet7h3uBbiAlFHyp"
-    },
-    "1mTvGmxURsHAtuq0xdg32j": {
-      "priority": 5,
-      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da845c50d41d4b8214990632b6f5",
-      "enabled": true,
-      "id": "1mTvGmxURsHAtuq0xdg32j",
-      "owner": "Yago",
-      "title": "Empty Head",
+      "title": "\u260a",
       "total_tracks": 7,
-      "url": "https://open.spotify.com/playlist/1mTvGmxURsHAtuq0xdg32j"
-    },
-    "2Omysf6hkG6zcTeTWkJhWy": {
-      "priority": 6,
-      "owner": "Yago",
-      "title": "Mood - 21/22",
-      "total_tracks": 84,
-      "url": "https://open.spotify.com/playlist/2Omysf6hkG6zcTeTWkJhWy",
-      "id": "2Omysf6hkG6zcTeTWkJhWy",
-      "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e0214bf08a4ccfe0b17bcf42e5cab67616d00001e023d3eb682789f8ac82b50de9dab67616d00001e025969bd2fa7a49e16284e030cab67616d00001e02a9026c5b3fce01c68c3b1b83",
+      "url": "https://open.spotify.com/playlist/5EB3Jvp0ZdzRm2dJyJfXmd",
+      "id": "5EB3Jvp0ZdzRm2dJyJfXmd",
+      "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e0272aa2ed3325223003e049581ab67616d00001e02a9db6f46e7223138fc92bed4ab67616d00001e02b77f936a9afda69f66a5e875ab67616d00001e02b7bbb745d1e03609c58a8252",
       "enabled": true
     },
-    "0LkAX5ClLPCPOBz5vPz03O": {
-      "priority": 8,
+    "7DGBUQRp84TX77ehOyOgWu": {
+      "priority": 1,
       "owner": "Yago",
-      "title": "House",
-      "total_tracks": 24,
-      "url": "https://open.spotify.com/playlist/0LkAX5ClLPCPOBz5vPz03O",
-      "id": "0LkAX5ClLPCPOBz5vPz03O",
-      "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e023d8ef938cab0ae40dba4b058ab67616d00001e02713ef374d4d8106516285022ab67616d00001e02aa523a8b775464450d6970ddab67616d00001e02ecefe128ca12cc402dc9ebfe",
-      "enabled": false
-    },
-    "2nwpwn1lx9775vE1acP0fo": {
-      "priority": 8,
-      "owner": "Yago",
-      "title": "Back - 22/23",
-      "total_tracks": 64,
-      "url": "https://open.spotify.com/playlist/2nwpwn1lx9775vE1acP0fo",
-      "id": "2nwpwn1lx9775vE1acP0fo",
-      "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e0238156d1db2ce99dcbec9024aab67616d00001e02554eff8a268e210331f69aa3ab67616d00001e025ae244507d2e2be21c509227ab67616d00001e0266f45a5c48e5f17dc06ac91c",
-      "enabled": false
-    },
-    "74OQqzyKSAKWxhVvJVxoha": {
-      "priority": 10,
-      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8435aaa7e565b475935cdc8898",
-      "enabled": false,
-      "id": "74OQqzyKSAKWxhVvJVxoha",
-      "owner": "Yago",
-      "title": "Pt. 2 - 24/25",
-      "total_tracks": 80,
-      "url": "https://open.spotify.com/playlist/74OQqzyKSAKWxhVvJVxoha"
+      "title": "Cronolog\u00eda",
+      "total_tracks": 1,
+      "url": "https://open.spotify.com/playlist/7DGBUQRp84TX77ehOyOgWu",
+      "id": "7DGBUQRp84TX77ehOyOgWu",
+      "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84da6083816a9865ab2ff3d898",
+      "enabled": true
     }
   }
 }

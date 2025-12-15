@@ -1,5 +1,6 @@
 import os
 import re
+from threading import Event
 from PySide6.QtCore import SignalInstance
 import requests
 from spotdl import Spotdl
@@ -16,8 +17,18 @@ client_id = None
 client_secret = None
 
 
-def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
+# TODO: TRY TO ALLOW TO USE THE USERNAME OR FACILITATE THE ID
+def get_user_playlists(
+    user_id: str,
+    found_playlist_signal: SignalInstance,
+    cancellation_flag: Event | None = None,
+):
+    print(f"\n== Starting playlist search for user id '{user_id}' ==")
+
     global spotipy_client
+
+    if cancellation_flag and cancellation_flag.is_set():
+        return
 
     if not spotipy_client:
         global client_id
@@ -39,6 +50,8 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
         spotipy_client = spotipy.Spotify(auth_manager=auth_manager)
 
     try:
+        if cancellation_flag and cancellation_flag.is_set():
+            return
         results = spotipy_client.user_playlists(user_id)
     except SpotifyException as e:
         if "http status: 404" in str(e):
@@ -56,25 +69,30 @@ def get_user_playlists(user_id: str, found_playlist_signal: SignalInstance):
 
     while results:
         for playlist in results["items"]:
-            if playlist.get("public", True):
-                # TODO: ENSURE THAT PRIORITY VALUE IS SET AFTER ADDING TO LIST CARD
-                playlist_data: PlaylistData = {
-                    "priority": -1,
-                    "owner": playlist["owner"]["display_name"],
-                    "title": playlist["name"],
-                    "total_tracks": playlist["tracks"]["total"],
-                    "url": playlist["external_urls"]["spotify"],
-                    "id": playlist["id"],
-                    "cover_url": playlist["images"][0]["url"],
-                    "enabled": True,
-                }
+            if cancellation_flag and cancellation_flag.is_set():
+                return
 
-                response = requests.get(playlist_data.get("cover_url"))
-                cover_bytes = bytes()
-                if response.status_code == 200:
-                    cover_bytes = response.content
+            # TODO: ENSURE THAT PRIORITY VALUE IS SET AFTER ADDING TO LIST CARD
+            playlist_data: PlaylistData = {
+                "priority": -1,
+                "owner": playlist["owner"]["display_name"],
+                "title": playlist["name"],
+                "total_tracks": playlist["tracks"]["total"],
+                "url": playlist["external_urls"]["spotify"],
+                "id": playlist["id"],
+                "cover_url": playlist["images"][0]["url"],
+                "enabled": True,
+            }
 
-                found_playlist_signal.emit(playlist_data, cover_bytes)
+            if cancellation_flag and cancellation_flag.is_set():
+                return
+
+            response = requests.get(playlist_data.get("cover_url"))
+            cover_bytes = bytes()
+            if response.status_code == 200:
+                cover_bytes = response.content
+
+            found_playlist_signal.emit(playlist_data, cover_bytes)
 
         if results["next"]:
             results = spotipy_client.next(results)
@@ -133,13 +151,24 @@ def init_spotdl(output_directory: str):
 
 
 def syncPlaylist(
-    playlist: PlaylistData, progress_signal: SignalInstance, playlist_index: int = -1
+    playlist: PlaylistData,
+    amount: int,
+    playlist_index: int,
+    progress_signal: SignalInstance | None,
+    cancellation_flag: Event | None = None,
 ):
     print(f"\n== Starting sync for '{playlist['title']}' ==")
 
-    # Get the spotdl configuration
     p_title = playlist["title"]
     p_url = playlist["url"]
+
+    if progress_signal:
+        progress_signal.emit(
+            [
+                f"Playlist: '{p_title}' ({playlist_index}/{amount})",
+                "...",
+            ]
+        )
 
     # Configured output directory for downloads
     output_directory = f"playlists/{_sanitize_filename(p_title)}"
@@ -149,6 +178,17 @@ def syncPlaylist(
 
     # Create folder for the playlist
     os.makedirs(output_directory, exist_ok=True)
+
+    if progress_signal:
+        progress_signal.emit(
+            [
+                f"Downloading cover of '{playlist['title']}'",
+                "...",
+            ]
+        )
+
+    if cancellation_flag and cancellation_flag.is_set():
+        return
 
     # Download the playlist cover
     download_cover_image(output_directory, playlist.get("cover_url"))
@@ -161,6 +201,9 @@ def syncPlaylist(
         return
 
     try:
+        if cancellation_flag and cancellation_flag.is_set():
+            return
+
         songs = spotdl.search([p_url])
 
         if not songs:
@@ -168,14 +211,19 @@ def syncPlaylist(
             return
 
         # Download each song
-        # TODO: ADD PLAYIST NAME ALSO
         total_tracks = len(songs)
         for i, song in enumerate(songs):
+            if cancellation_flag and cancellation_flag.is_set():
+                return
+
             if progress_signal:
-                message = (
-                    f"{p_title} : synchronizing {song.name}... {i + 1}/{total_tracks}"
+                progress_signal.emit(
+                    [
+                        f"Playlist: '{p_title}' ({playlist_index}/{amount})",
+                        f"Track: '{song.name}' ({i + 1}/{total_tracks})",
+                    ]
                 )
-                progress_signal.emit(message, playlist_index)
+
             download = spotdl.download(song)
             print(f"Successfully downloaded: {song.name} at {download[1]}.")
     except Exception as e:
