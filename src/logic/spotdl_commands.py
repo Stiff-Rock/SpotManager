@@ -9,7 +9,8 @@ import spotipy
 from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
 from src.utils.cache_manager import CACHE
-from src.utils.config_manager import SYNC_OUTPUT_DIRECTORY, PlaylistData
+from src.utils.config_manager import CONFIG, PlaylistData
+from pathlib import Path
 
 spotdl = None
 spotipy_client = None
@@ -18,8 +19,6 @@ client_id = None
 client_secret = None
 
 
-# TODO: TRY TO GET HIGHER QUALITY
-# TODO: TRY TO ALLOW TO USE THE USERNAME OR FACILITATE THE ID
 def get_user_playlists(
     user_id: str,
     found_playlist_signal: SignalInstance,
@@ -34,23 +33,11 @@ def get_user_playlists(
         return
 
     if not spotipy_client:
-        global client_id
-        global client_secret
+        init_spotipy()
 
-        if not client_id or not client_secret:
-            get_spotdl_config()
-
-        if not client_id or not client_secret:
-            print(
-                f"Unable to obtain client id and secret: client_id - {client_id} | client_secret - {client_secret}"
-            )
+        if not spotipy_client:
+            print("Unable to initialize spotipy client")
             return
-
-        auth_manager = SpotifyClientCredentials(
-            client_id=client_id, client_secret=client_secret
-        )
-
-        spotipy_client = spotipy.Spotify(auth_manager=auth_manager)
 
     try:
         if cancellation_flag and cancellation_flag.is_set():
@@ -168,6 +155,28 @@ def init_spotdl(output_directory: str):
         raise Exception(f"Error initialising Spotdl instance: {spotdl}")
 
 
+def init_spotipy():
+    global spotipy_client
+
+    global client_id
+    global client_secret
+
+    if not client_id or not client_secret:
+        get_spotdl_config()
+
+    if not client_id or not client_secret:
+        print(
+            f"Unable to obtain client id and secret: client_id - {client_id} | client_secret - {client_secret}"
+        )
+        return
+
+    auth_manager = SpotifyClientCredentials(
+        client_id=client_id, client_secret=client_secret
+    )
+
+    spotipy_client = spotipy.Spotify(auth_manager=auth_manager)
+
+
 def syncPlaylist(
     playlist: PlaylistData,
     amount: int,
@@ -189,7 +198,8 @@ def syncPlaylist(
         )
 
     # Configured output directory for downloads
-    output_directory = str(SYNC_OUTPUT_DIRECTORY / _sanitize_filename(p_title))
+    base_path = Path(CONFIG.get_playlists_path())
+    output_directory = str(base_path / _sanitize_filename(p_title))
 
     # Get the spotdl instance
     init_spotdl(output_directory)

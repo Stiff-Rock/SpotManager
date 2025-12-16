@@ -3,10 +3,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 # Define the path to your config file
-CONFIG_FILE_PATH = Path("playlists.json")
-SYNC_OUTPUT_DIRECTORY = Path("playlists/")
-
-# TODO: MAKE CONFIG PAGE
+CONFIG_FILE_PATH = Path("data.json")
 
 
 class PlaylistData(TypedDict):
@@ -22,10 +19,15 @@ class PlaylistData(TypedDict):
 
 class ConfigSchema(TypedDict):
     username: str
+    playlists_location: str
     playlists: dict[str, PlaylistData]
 
 
-DEFAULT_CONFIG: ConfigSchema = {"username": "Spotify", "playlists": {}}
+DEFAULT_CONFIG: ConfigSchema = {
+    "username": "Spotify",
+    "playlists_location": "playlists/",
+    "playlists": {},
+}
 
 
 class ConfigManager:
@@ -64,6 +66,10 @@ class ConfigManager:
         """Get the configured username"""
         return self._data.get("username", None)
 
+    def get_playlists_path(self):
+        """Get the configured path to sync playlists"""
+        return self._data.get("playlists_location", "")
+
     def get_all_playlists(self):
         """Get all saved playlists"""
         return self._data.get("playlists", None)
@@ -84,6 +90,11 @@ class ConfigManager:
     def set_username(self, new_username: str):
         """Set a new username value"""
         self._data["username"] = new_username
+        self._save_config(self._data)
+
+    def set_playlists_path(self, new_path: str):
+        """Set the path to sync playlists"""
+        self._data["playlists_location"] = new_path
         self._save_config(self._data)
 
     def set_all_playlists(self, new_playlists: dict[str, PlaylistData]):

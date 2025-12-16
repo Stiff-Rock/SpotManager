@@ -1,7 +1,6 @@
 import os
 
 
-# TODO: CLEAR ALL CACHE
 class CacheManager:
     CACHE_DIR = "cache/covers"
 

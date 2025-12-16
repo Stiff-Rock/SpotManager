@@ -3,6 +3,7 @@ from PySide6 import QtGui
 from PySide6 import QtCore
 from PySide6.QtGui import QIcon
 from src.gui.views.add_view import AddView
+from src.gui.views.config_view import ConfigView
 from src.gui.views.manage_view import ManageView
 from src.gui.widgets.loading_overlay import LoadingIndicator
 from src.gui.widgets.toast_popup import ToastPopUp
@@ -39,8 +40,11 @@ class MainWindow(QtWidgets.QWidget):
             lambda: self.toast.display("Playlist added", 1500)
         )
 
+        self.config_view = ConfigView()
+
         tab_widget.addTab(self.manage_view, "🎵 Manage")
         tab_widget.addTab(self.add_view, "🔍 Search")
+        tab_widget.addTab(self.config_view, "⚙ Config")
 
         main_layout.addWidget(tab_widget)
 

@@ -7,7 +7,7 @@ from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.cache_manager import CACHE
-from src.utils.config_manager import CONFIG, SYNC_OUTPUT_DIRECTORY, PlaylistData
+from src.utils.config_manager import CONFIG, PlaylistData
 from src.utils.utils import cleanup_thread
 
 
@@ -163,7 +163,7 @@ class ManageView(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def open_playlists_folder(self):
-        os.startfile(SYNC_OUTPUT_DIRECTORY)
+        os.startfile(CONFIG.get_playlists_path())
 
 
 class SyncAllPlaylistsWorker(QtCore.QObject):

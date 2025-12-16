@@ -1,5 +1,6 @@
 {
   "username": "4jhs7q97i1u7csh78ryakbvhb",
+  "playlists_location": "C:/Users/Yago/Desktop",
   "playlists": {
     "3ZBPsPDPbDeZjOEqAnHbR4": {
       "priority": 0,
@@ -9,7 +10,7 @@
       "url": "https://open.spotify.com/playlist/3ZBPsPDPbDeZjOEqAnHbR4",
       "id": "3ZBPsPDPbDeZjOEqAnHbR4",
       "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e020ce91190aaea70dd4fe020c4ab67616d00001e021c42f8929d7085610638c69fab67616d00001e023d54a30e59638f60f56dd4e6ab67616d00001e0259d853d7b9c2f122f3bc8cae",
-      "enabled": true
+      "enabled": false
     },
     "5EB3Jvp0ZdzRm2dJyJfXmd": {
       "priority": 1,
@@ -29,7 +30,7 @@
       "url": "https://open.spotify.com/playlist/2JpQBKcRAVpzAo2Bf8UUIb",
       "id": "2JpQBKcRAVpzAo2Bf8UUIb",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da840c34943899126f19cb3bcd5b",
-      "enabled": true
+      "enabled": false
     },
     "74OQqzyKSAKWxhVvJVxoha": {
       "priority": 3,
@@ -39,7 +40,7 @@
       "url": "https://open.spotify.com/playlist/74OQqzyKSAKWxhVvJVxoha",
       "id": "74OQqzyKSAKWxhVvJVxoha",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da8435aaa7e565b475935cdc8898",
-      "enabled": true
+      "enabled": false
     },
     "0Nqqrkzet7h3uBbiAlFHyp": {
       "priority": 4,
@@ -49,7 +50,7 @@
       "url": "https://open.spotify.com/playlist/0Nqqrkzet7h3uBbiAlFHyp",
       "id": "0Nqqrkzet7h3uBbiAlFHyp",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da844293d2a82773e866be26f070",
-      "enabled": true
+      "enabled": false
     },
     "72q1wcNqeiYVYzpQoCnVCe": {
       "priority": 5,
@@ -59,7 +60,7 @@
       "url": "https://open.spotify.com/playlist/72q1wcNqeiYVYzpQoCnVCe",
       "id": "72q1wcNqeiYVYzpQoCnVCe",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84ab454ca404618b5ebf28c170",
-      "enabled": true
+      "enabled": false
     },
     "2nwpwn1lx9775vE1acP0fo": {
       "priority": 6,
@@ -69,7 +70,7 @@
       "url": "https://open.spotify.com/playlist/2nwpwn1lx9775vE1acP0fo",
       "id": "2nwpwn1lx9775vE1acP0fo",
       "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e0238156d1db2ce99dcbec9024aab67616d00001e02554eff8a268e210331f69aa3ab67616d00001e025ae244507d2e2be21c509227ab67616d00001e0266f45a5c48e5f17dc06ac91c",
-      "enabled": true
+      "enabled": false
     },
     "0Sn5bzOKk11YenjC7G4h7z": {
       "priority": 7,
@@ -79,7 +80,7 @@
       "url": "https://open.spotify.com/playlist/0Sn5bzOKk11YenjC7G4h7z",
       "id": "0Sn5bzOKk11YenjC7G4h7z",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84b6e537c4c8ebdc0740bbec47",
-      "enabled": true
+      "enabled": false
     },
     "2Omysf6hkG6zcTeTWkJhWy": {
       "priority": 8,
@@ -89,7 +90,7 @@
       "url": "https://open.spotify.com/playlist/2Omysf6hkG6zcTeTWkJhWy",
       "id": "2Omysf6hkG6zcTeTWkJhWy",
       "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e0214bf08a4ccfe0b17bcf42e5cab67616d00001e023d3eb682789f8ac82b50de9dab67616d00001e025969bd2fa7a49e16284e030cab67616d00001e02a9026c5b3fce01c68c3b1b83",
-      "enabled": true
+      "enabled": false
     },
     "0LkAX5ClLPCPOBz5vPz03O": {
       "priority": 9,
@@ -99,7 +100,7 @@
       "url": "https://open.spotify.com/playlist/0LkAX5ClLPCPOBz5vPz03O",
       "id": "0LkAX5ClLPCPOBz5vPz03O",
       "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e023d8ef938cab0ae40dba4b058ab67616d00001e02713ef374d4d8106516285022ab67616d00001e02aa523a8b775464450d6970ddab67616d00001e02ecefe128ca12cc402dc9ebfe",
-      "enabled": true
+      "enabled": false
     },
     "0mSpbPC9eZFUo4mhCSa2no": {
       "priority": 10,
@@ -109,7 +110,7 @@
       "url": "https://open.spotify.com/playlist/0mSpbPC9eZFUo4mhCSa2no",
       "id": "0mSpbPC9eZFUo4mhCSa2no",
       "cover_url": "https://mosaic.scdn.co/640/ab67616d00001e02215cac8c30b47bb1bfb9d2d1ab67616d00001e0252f194d02c39909d1b284799ab67616d00001e026938311000a0e494a26986e5ab67616d00001e02b2f893f4215f2930e7320355",
-      "enabled": true
+      "enabled": false
     },
     "1mTvGmxURsHAtuq0xdg32j": {
       "priority": 11,
@@ -119,7 +120,7 @@
       "url": "https://open.spotify.com/playlist/1mTvGmxURsHAtuq0xdg32j",
       "id": "1mTvGmxURsHAtuq0xdg32j",
       "cover_url": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da845c50d41d4b8214990632b6f5",
-      "enabled": true
+      "enabled": false
     }
   }
 }

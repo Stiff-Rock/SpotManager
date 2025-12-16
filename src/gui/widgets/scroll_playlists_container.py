@@ -1,10 +1,8 @@
 from PySide6 import QtWidgets
-
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.utils.config_manager import CONFIG
 
 
-# TODO: Add filters and sorting
 class ScrollPlaylistsContainer(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
