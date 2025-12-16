@@ -136,7 +136,14 @@ class ManageView(QtWidgets.QWidget):
 
     @QtCore.Slot(PlaylistData, bytes)
     def add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
-        new_card = PlaylistCard("manage", new_playlist, cover_bytes)
+        callback = self.scroll_playlists_container.change_playlist_priority
+
+        new_card = PlaylistCard(
+            "manage",
+            new_playlist,
+            cover_bytes,
+            callback,
+        )
 
         p_id = new_playlist.get("id")
         CACHE.save_cover(cover_bytes, p_id)

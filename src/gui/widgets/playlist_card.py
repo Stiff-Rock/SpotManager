@@ -1,5 +1,5 @@
 import threading
-from typing import Literal
+from typing import Callable, Literal
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
@@ -21,7 +21,13 @@ class PlaylistCard(QtWidgets.QWidget):
     on_sync_finish = QtCore.Signal()
     on_delete = QtCore.Signal()
 
-    def __init__(self, type: CardType, new_playlist: PlaylistData, cover_bytes: bytes):
+    def __init__(
+        self,
+        type: CardType,
+        new_playlist: PlaylistData,
+        cover_bytes: bytes,
+        on_priority_change: Callable,
+    ):
         super().__init__()
 
         self.setMaximumHeight(MAX_HEIGHT)
@@ -104,15 +110,11 @@ class PlaylistCard(QtWidgets.QWidget):
             buttons_layout.addWidget(self.enabled_checkbox, stretch=8)
 
             priority_up_btn = QtWidgets.QPushButton("↑")
-            priority_up_btn.clicked.connect(
-                lambda _, p=new_playlist: self._change_playlist_priority(p, -1)
-            )
+            priority_up_btn.clicked.connect(lambda: on_priority_change(self, -1))
             buttons_layout.addWidget(priority_up_btn, stretch=1)
 
             priority_down_btn = QtWidgets.QPushButton("↓")
-            priority_down_btn.clicked.connect(
-                lambda _, p=new_playlist: self._change_playlist_priority(p, 1)
-            )
+            priority_down_btn.clicked.connect(lambda: on_priority_change(self, 1))
             buttons_layout.addWidget(priority_down_btn, stretch=1)
 
             sync_btn = QtWidgets.QPushButton("Sync")
@@ -189,25 +191,6 @@ class PlaylistCard(QtWidgets.QWidget):
         self.on_delete.emit()
 
         self.deleteLater()
-
-    # TODO: CHANGE PRIORITY
-    @QtCore.Slot()
-    def _change_playlist_priority(self, playlist: PlaylistData, change: int):
-        old_priority = playlist.get("priority")
-        new_priority = old_priority + change
-
-        if new_priority <= 0:
-            print(f"Ignoring priority change of playlist {playlist.get('title')}")
-            return
-
-        CONFIG.set_playlist_priority(playlist.get("id"), new_priority)
-
-        parent_widget = self.parent()
-        children_list = parent_widget.children()
-        child_to_move = children_list.pop(old_priority)
-        children_list.insert(new_priority, child_to_move)
-
-        print(f"parent_widget {parent_widget}")
 
 
 class SyncPlaylistsWorker(QtCore.QObject):

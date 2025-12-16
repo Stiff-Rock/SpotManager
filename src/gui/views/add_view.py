@@ -8,7 +8,6 @@ from src.utils.config_manager import CONFIG, PlaylistData
 from src.utils.utils import cleanup_thread
 
 
-# TODO: Add filters and sorting
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
 
@@ -46,11 +45,9 @@ class AddView(QtWidgets.QWidget):
         # Username label, input field and search button
         input_layout = QtWidgets.QHBoxLayout()
 
-        user_id_lbl = QtWidgets.QLabel("User ID")
-        input_layout.addWidget(user_id_lbl)
-
         self.username_le = QtWidgets.QLineEdit()
         self.username_le.setText(CONFIG.get_username())
+        self.username_le.setPlaceholderText("User ID")
         self.username_le.editingFinished.connect(
             lambda: self._search_user_playlists(self.username_le.text())
         )
@@ -98,7 +95,6 @@ class AddView(QtWidgets.QWidget):
         self.search_worker.finished.connect(self.search_playlist_loading_indicator.hide)
 
         self.scroll_playlists_container.reset_playlist_layout()
-
         self.search_playlist_loading_indicator.show()
         self._search_logic_thread.start()
 
@@ -112,7 +108,9 @@ class AddView(QtWidgets.QWidget):
         if not self.scroll_playlists_container:
             return
 
-        playlist_card = PlaylistCard("search", new_playlist, cover_bytes)
+        callback = self.scroll_playlists_container.change_playlist_priority
+
+        playlist_card = PlaylistCard("search", new_playlist, cover_bytes, callback)
         playlist_card.on_add_playlist.connect(self._add_playlist_to_collection)
         self.scroll_playlists_container.add_playlist_card(playlist_card)
 

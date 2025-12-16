@@ -99,12 +99,26 @@ class ConfigManager:
         self._data["playlists"][new_playlist.get("id")] = new_playlist
         self._save_config(self._data)
 
-    def set_playlist_priority(self, p_id: str, priority: int):
-        """Set the priority of a playlist"""
-        if "playlists" not in self._data or self._data["playlists"] is None:
-            self._data["playlists"] = {}
+    def set_playlist_priority(self, p_id: str, new_priority: int):
+        """Reordena las prioridades desplazando los elementos existentes."""
+        if "playlists" not in self._data or not self._data["playlists"]:
+            return
 
-        self._data["playlists"][p_id]["priority"] = priority
+        playlists = self._data["playlists"]
+
+        ordered_ids = sorted(
+            playlists.keys(), key=lambda k: playlists[k].get("priority", 0)
+        )
+
+        if p_id in ordered_ids:
+            ordered_ids.remove(p_id)
+
+        new_priority = max(0, min(new_priority, len(ordered_ids)))
+        ordered_ids.insert(new_priority, p_id)
+
+        for index, playlist_id in enumerate(ordered_ids):
+            playlists[playlist_id]["priority"] = index
+
         self._save_config(self._data)
 
 

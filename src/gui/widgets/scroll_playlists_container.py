@@ -1,8 +1,10 @@
 from PySide6 import QtWidgets
 
 from src.gui.widgets.playlist_card import PlaylistCard
+from src.utils.config_manager import CONFIG
 
 
+# TODO: Add filters and sorting
 class ScrollPlaylistsContainer(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -38,6 +40,7 @@ class ScrollPlaylistsContainer(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.scroll_area)
 
+        # Scroll card container
         self.reset_playlist_layout()
 
     def reset_playlist_layout(self):
@@ -63,6 +66,8 @@ class ScrollPlaylistsContainer(QtWidgets.QWidget):
 
         self.scroll_area.setWidget(self.playlists_container_widget)
 
+        self.playlist_cards.clear()
+
     def add_playlist_card(self, playlist_card: PlaylistCard):
         if not self.playlists_container_layout:
             return
@@ -74,6 +79,20 @@ class ScrollPlaylistsContainer(QtWidgets.QWidget):
         self.playlist_cards.append(playlist_card)
 
         return insertion_index
+
+    def change_playlist_priority(self, card: PlaylistCard, direction: int):
+        old_index = card.playlist.get("priority")
+        new_index = old_index + direction
+
+        if 0 <= new_index < len(self.playlist_cards):
+            if not self.playlists_container_layout:
+                print(
+                    "Error changing playlist priority: playlists_container_layout is None"
+                )
+                return
+
+            CONFIG.set_playlist_priority(card.playlist.get("id"), new_index)
+            self.playlists_container_layout.insertWidget(new_index, card)
 
     def filter_by_title(self, title_filter: str):
         for card in self.playlist_cards:
