@@ -35,7 +35,9 @@ class ManageView(QtWidgets.QWidget):
         main_layout.addWidget(header_lbl)
 
         # Loader
-        self.parse_playlist_loading_indicator = LoadingIndicator("LOCAL")
+        self.parse_playlist_loading_indicator = LoadingIndicator(
+            "LOCAL", hide_cancel_btn=True
+        )
         self.parse_playlist_loading_indicator.hide()
         main_layout.addWidget(self.parse_playlist_loading_indicator)
 

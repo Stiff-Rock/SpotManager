@@ -77,7 +77,6 @@ def get_user_playlists(
             if cancellation_flag and cancellation_flag.is_set():
                 return
 
-            # TODO: ENSURE THAT PRIORITY VALUE IS SET AFTER ADDING TO LIST CARD
             playlist_data: PlaylistData = {
                 "priority": -1,
                 "owner": playlist["owner"]["display_name"],

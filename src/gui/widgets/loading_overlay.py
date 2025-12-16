@@ -17,7 +17,7 @@ LOADER_TYPE = Union[Literal["LOCAL"], Literal["OVERLAY"]]
 class LoadingIndicator(QWidget):
     on_cancel = QtCore.Signal()
 
-    def __init__(self, type: LOADER_TYPE, parent=None):
+    def __init__(self, type: LOADER_TYPE, parent=None, hide_cancel_btn=False):
         super().__init__(parent)
         self.type = type
 
@@ -83,13 +83,14 @@ class LoadingIndicator(QWidget):
         )
 
         # Cancel button
-        self.cancel_btn = QPushButton("Cancel")
-        self.cancel_btn.setFixedWidth(100)
-        self.cancel_btn.clicked.connect(self.cancel)
+        if not hide_cancel_btn:
+            self.cancel_btn = QPushButton("Cancel")
+            self.cancel_btn.setFixedWidth(100)
+            self.cancel_btn.clicked.connect(self.cancel)
 
-        progress_vbox.addWidget(
-            self.cancel_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
-        )
+            progress_vbox.addWidget(
+                self.cancel_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+            )
 
         container_layout.addLayout(progress_vbox)
 

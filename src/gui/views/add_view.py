@@ -9,7 +9,6 @@ from src.utils.utils import cleanup_thread
 
 
 # TODO: ADD SEARCH PLAYLIST NAME INPUT
-# TODO: LOCAL LOADING INDICATOR
 # TODO: Add filters and sorting
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
@@ -78,6 +77,7 @@ class AddView(QtWidgets.QWidget):
 
         # Loader
         self.search_playlist_loading_indicator = LoadingIndicator("LOCAL")
+        self.search_playlist_loading_indicator.on_cancel.connect(self.cancel_search)
         self.search_playlist_loading_indicator.hide()
         self.main_layout.addWidget(self.search_playlist_loading_indicator)
 
@@ -117,6 +117,11 @@ class AddView(QtWidgets.QWidget):
 
         self.search_playlist_loading_indicator.show()
         self._search_logic_thread.start()
+
+    @QtCore.Slot()
+    def cancel_search(self):
+        if self.search_worker is not None:
+            self.search_worker.cancel()
 
     @QtCore.Slot(dict)
     def _add_search_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
@@ -159,7 +164,6 @@ class AddView(QtWidgets.QWidget):
         self._add_logic_thread.start()
 
 
-# TODO: SEARCH AND ADD SHOULD WORK ON DIFFERENT THREADS
 # TODO: SHOW LOCAL LOADER AND AND MAKE IT CANCELLABLE
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
