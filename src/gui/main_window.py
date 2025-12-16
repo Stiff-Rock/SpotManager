@@ -56,6 +56,6 @@ class MainWindow(QtWidgets.QWidget):
             self.manage_view.worker.cancel()
             print(">> Cancelling manage_view worker <<")
 
-        if self.add_view.worker:
-            self.add_view.worker.cancel()
+        if self.add_view.add_worker:
+            self.add_view.add_worker.cancel()
             print(">> Cancelling add_view worker <<")

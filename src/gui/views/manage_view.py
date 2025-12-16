@@ -1,3 +1,4 @@
+import os
 import threading
 import requests
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -5,12 +6,10 @@ from src.gui.widgets.loading_overlay import LoadingIndicator
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import syncPlaylist
-from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.config_manager import CONFIG, SYNC_OUTPUT_DIRECTORY, PlaylistData
 from src.utils.utils import cleanup_thread
 
 
-# TODO: Manually add playlist by url
-# TODO: INDIVIDUAL SYNC GLOBAL LOADING INDICATOR
 class ManageView(QtWidgets.QWidget):
     on_process_start = QtCore.Signal()
     on_process_finish = QtCore.Signal()
@@ -49,6 +48,7 @@ class ManageView(QtWidgets.QWidget):
 
         sync_btn = QtWidgets.QPushButton("Sync All")
         sync_btn.clicked.connect(self.sync_all_playlists)
+        footer_layout.addWidget(sync_btn)
 
         horizontal_buttons_layout = QtWidgets.QHBoxLayout()
         enable_btn = QtWidgets.QPushButton("Enable All")
@@ -60,8 +60,11 @@ class ManageView(QtWidgets.QWidget):
         horizontal_buttons_layout.addWidget(enable_btn)
         horizontal_buttons_layout.addWidget(disable_btn)
 
-        footer_layout.addWidget(sync_btn)
         footer_layout.addLayout(horizontal_buttons_layout)
+
+        show_folder_btn = QtWidgets.QPushButton("Show playlists folder")
+        show_folder_btn.clicked.connect(self.open_playlists_folder)
+        footer_layout.addWidget(show_folder_btn)
 
         main_layout.addLayout(footer_layout)
 
@@ -132,6 +135,11 @@ class ManageView(QtWidgets.QWidget):
     @QtCore.Slot(PlaylistData, bytes)
     def add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
         new_card = PlaylistCard("manage", new_playlist, cover_bytes)
+
+        new_card.on_sync_start.connect(self.on_process_start.emit)
+        new_card.on_sync_progress_update.connect(self.on_update_progress.emit)
+        new_card.on_sync_finish.connect(self.on_process_finish.emit)
+
         new_card.on_delete.connect(
             lambda card=new_card: self.playlist_cards.remove(card)
         )
@@ -140,6 +148,10 @@ class ManageView(QtWidgets.QWidget):
 
         if insertion_index is not None:
             CONFIG.set_playlist_priority(new_playlist.get("id"), insertion_index)
+
+    @QtCore.Slot()
+    def open_playlists_folder(self):
+        os.startfile(SYNC_OUTPUT_DIRECTORY)
 
 
 class SyncAllPlaylistsWorker(QtCore.QObject):

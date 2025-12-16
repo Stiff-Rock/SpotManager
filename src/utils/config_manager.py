@@ -4,6 +4,7 @@ from typing import TypedDict, cast
 
 # Define the path to your config file
 CONFIG_FILE_PATH = Path("playlists.json")
+SYNC_OUTPUT_DIRECTORY = Path("playlists/")
 
 
 class PlaylistData(TypedDict):

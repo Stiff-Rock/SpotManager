@@ -1,9 +1,5 @@
 from typing import Any
-
 from PySide6 import QtCore
-
-
-PLAYLISTS_JSON_PATH = "playlists.json"
 
 
 @QtCore.Slot()

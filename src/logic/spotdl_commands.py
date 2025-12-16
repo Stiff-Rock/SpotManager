@@ -8,7 +8,7 @@ import spotdl.utils.config as spotDlConfig
 import spotipy
 from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
-from src.utils.config_manager import PlaylistData
+from src.utils.config_manager import SYNC_OUTPUT_DIRECTORY, PlaylistData
 
 spotdl = None
 spotipy_client = None
@@ -21,6 +21,7 @@ client_secret = None
 def get_user_playlists(
     user_id: str,
     found_playlist_signal: SignalInstance,
+    progress_signal: SignalInstance,
     cancellation_flag: Event | None = None,
 ):
     print(f"\n== Starting playlist search for user id '{user_id}' ==")
@@ -52,6 +53,7 @@ def get_user_playlists(
     try:
         if cancellation_flag and cancellation_flag.is_set():
             return
+        progress_signal.emit(["Loading playlists..."])
         results = spotipy_client.user_playlists(user_id)
     except SpotifyException as e:
         if "http status: 404" in str(e):
@@ -68,7 +70,10 @@ def get_user_playlists(
             raise
 
     while results:
-        for playlist in results["items"]:
+        total = len(results["items"])
+        for i, playlist in enumerate(results["items"]):
+            progress_signal.emit([f"Loading playlists... ({i + 1}/{total})"])
+
             if cancellation_flag and cancellation_flag.is_set():
                 return
 
@@ -171,7 +176,7 @@ def syncPlaylist(
         )
 
     # Configured output directory for downloads
-    output_directory = f"playlists/{_sanitize_filename(p_title)}"
+    output_directory = str(SYNC_OUTPUT_DIRECTORY / _sanitize_filename(p_title))
 
     # Get the spotdl instance
     init_spotdl(output_directory)

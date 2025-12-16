@@ -15,6 +15,9 @@ CardType = Literal["search", "manage"]
 
 class PlaylistCard(QtWidgets.QWidget):
     on_add_playlist = QtCore.Signal(PlaylistData, bytes)
+    on_sync_start = QtCore.Signal()
+    on_sync_progress_update = QtCore.Signal(list)
+    on_sync_finish = QtCore.Signal()
     on_delete = QtCore.Signal()
 
     def __init__(self, type: CardType, new_playlist: PlaylistData, cover_bytes: bytes):
@@ -138,7 +141,6 @@ class PlaylistCard(QtWidgets.QWidget):
         playlist = CONFIG.set_playlist(playlist)
 
     @QtCore.Slot(PlaylistData)
-    # TODO: Animation download this playlist and cancel button (this has to be blocking but with a worker)
     def _sync_playlist(self, playlist: PlaylistData):
         if self._logic_thread and self._logic_thread.isRunning():
             print("Previous sync is still running, cancelling...")
@@ -157,14 +159,15 @@ class PlaylistCard(QtWidgets.QWidget):
         self.worker.finished.connect(self._logic_thread.quit)
 
         # Custom Signals
-        # TODO: MANAGE THIS SIGNALIN
-        # self.worker.progress.connect(self.update_progress_bar)
+        self.worker.progress.connect(self.on_sync_progress_update.emit)
+        self.worker.finished.connect(self.on_sync_finish.emit)
 
         self.synching_playlist_count = sum(
             playlist.get("enabled", False)
             for playlist in CONFIG.get_all_playlists().values()
         )
 
+        self.on_sync_start.emit()
         self._logic_thread.start()
 
     @QtCore.Slot(str)
@@ -219,7 +222,7 @@ class SyncPlaylistsWorker(QtCore.QObject):
 
     def run(self):
         try:
-            syncPlaylist(self.playlist, 1, 1, self.progress, self.cancel_event.set())
+            syncPlaylist(self.playlist, 1, 1, self.progress, self.cancel_event)
         except Exception as e:
             print(
                 f"An error occurred while synchronizing the playlist '{self.playlist.get('title')}': {e}"

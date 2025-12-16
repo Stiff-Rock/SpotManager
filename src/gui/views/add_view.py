@@ -1,4 +1,5 @@
 import threading
+from src.gui.widgets.loading_overlay import LoadingIndicator
 from PySide6 import QtCore, QtGui, QtWidgets
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
@@ -9,14 +10,18 @@ from src.utils.utils import cleanup_thread
 
 # TODO: ADD SEARCH PLAYLIST NAME INPUT
 # TODO: LOCAL LOADING INDICATOR
+# TODO: Add filters and sorting
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
 
     def __init__(self):
         super().__init__()
 
-        self._logic_thread = None
-        self.worker = None
+        self._search_logic_thread = None
+        self.search_worker = None
+
+        self._add_logic_thread = None
+        self.add_worker = None
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -69,8 +74,12 @@ class AddView(QtWidgets.QWidget):
             lambda: self._search_playlists(self.playlist_le.text())
         )
         seach_layout.addWidget(search_song_btn)
-
         self.main_layout.addLayout(seach_layout)
+
+        # Loader
+        self.search_playlist_loading_indicator = LoadingIndicator("LOCAL")
+        self.search_playlist_loading_indicator.hide()
+        self.main_layout.addWidget(self.search_playlist_loading_indicator)
 
         # Playlist scroll list
         self.scroll_playlists_container = ScrollPlaylistsContainer()
@@ -80,31 +89,34 @@ class AddView(QtWidgets.QWidget):
 
     @QtCore.Slot(str)
     def _search_playlists(self, username: str):
-        if self._logic_thread and self._logic_thread.isRunning():
+        if self._search_logic_thread and self._search_logic_thread.isRunning():
             print("Can't search playlists, logic thread is currently busy")
             return
 
-        self._logic_thread = QtCore.QThread()
-        self.worker = SearchPlaylistsWorker(username)
+        self._search_logic_thread = QtCore.QThread()
+        self.search_worker = SearchPlaylistsWorker(username)
 
-        self.worker.moveToThread(self._logic_thread)
+        self.search_worker.moveToThread(self._search_logic_thread)
 
-        self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(
-            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        self._search_logic_thread.started.connect(self.search_worker.run)
+        self._search_logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "search_worker", "_search_logic_thread")
         )
 
-        self.worker.finished.connect(self._logic_thread.quit)
+        self.search_worker.finished.connect(self._search_logic_thread.quit)
 
         # Custom Signals
-        self.worker.updated_username.connect(self._update_username)
-        self.worker.found_playlist.connect(self._add_search_playlist_card)
-        # TODO: MAKE ITS OWN PROGRESS BAR, INTEAD OF USING PROGRESS, USE STARTED AND FINISH AND JUST SHOW AND HIDE PROGRESS BAR
-        # self.worker.progress.connect(self.on_update_progress.emit)
+        self.search_worker.updated_username.connect(self._update_username)
+        self.search_worker.found_playlist.connect(self._add_search_playlist_card)
+        self.search_worker.progress.connect(
+            self.search_playlist_loading_indicator.set_message
+        )
+        self.search_worker.finished.connect(self.search_playlist_loading_indicator.hide)
 
         self.scroll_playlists_container.reset_playlist_layout()
 
-        self._logic_thread.start()
+        self.search_playlist_loading_indicator.show()
+        self._search_logic_thread.start()
 
     @QtCore.Slot(dict)
     def _add_search_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
@@ -123,28 +135,28 @@ class AddView(QtWidgets.QWidget):
     def _add_playlist_to_collection(
         self, new_playlist: PlaylistData, cover_bytes: bytes
     ):
-        if self._logic_thread and self._logic_thread.isRunning():
+        if self._add_logic_thread and self._add_logic_thread.isRunning():
             print("Can't add plylist, logic thread is currently busy")
             return
 
-        self._logic_thread = QtCore.QThread()
-        self.worker = AddPlaylistToCollectionWorker(new_playlist, cover_bytes)
+        self._add_logic_thread = QtCore.QThread()
+        self.add_worker = AddPlaylistToCollectionWorker(new_playlist, cover_bytes)
 
-        self.worker.moveToThread(self._logic_thread)
+        self.add_worker.moveToThread(self._add_logic_thread)
 
-        self._logic_thread.started.connect(self.worker.run)
-        self._logic_thread.finished.connect(
-            lambda: cleanup_thread(self, "worker", "_logic_thread")
+        self._add_logic_thread.started.connect(self.add_worker.run)
+        self._add_logic_thread.finished.connect(
+            lambda: cleanup_thread(self, "add_worker", "_add_logic_thread")
         )
 
-        self.worker.finished.connect(self._logic_thread.quit)
+        self.add_worker.finished.connect(self._add_logic_thread.quit)
 
         # Custom Signals
-        self.worker.added_playlist_to_collection.connect(
+        self.add_worker.added_playlist_to_collection.connect(
             self.playlist_added_to_list.emit
         )
 
-        self._logic_thread.start()
+        self._add_logic_thread.start()
 
 
 # TODO: SEARCH AND ADD SHOULD WORK ON DIFFERENT THREADS
@@ -152,7 +164,7 @@ class AddView(QtWidgets.QWidget):
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
     found_playlist = QtCore.Signal(PlaylistData, bytes)
-    progress = QtCore.Signal(int)
+    progress = QtCore.Signal(list)
     finished = QtCore.Signal()
 
     def __init__(self, username: str):
@@ -185,7 +197,9 @@ class SearchPlaylistsWorker(QtCore.QObject):
                 self.finished.emit()
                 return
 
-            get_user_playlists(self.username, self.found_playlist, self.cancel_event)
+            get_user_playlists(
+                self.username, self.found_playlist, self.progress, self.cancel_event
+            )
         except:
             pass
         finally:

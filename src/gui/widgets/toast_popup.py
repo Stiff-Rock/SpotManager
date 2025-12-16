@@ -20,10 +20,10 @@ class ToastPopUp(QWidget):
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self.setStyleSheet("""
-            background-color: rgba(255, 255, 200, 240);  /* Amarillo suave y transparente */
-            color: black;                                /* Texto oscuro para contraste */
-            padding: 5px 10px;                           /* Reducir el relleno */
-            border-radius: 4px;                          /* Borde más pequeño */
+            background-color: rgba(255, 255, 200, 240);
+            color: black;                             
+            padding: 5px 10px;                        
+            border-radius: 4px;                       
         """)
 
         main_layout = QVBoxLayout(self)
