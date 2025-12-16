@@ -6,6 +6,8 @@ from typing import TypedDict, cast
 CONFIG_FILE_PATH = Path("playlists.json")
 SYNC_OUTPUT_DIRECTORY = Path("playlists/")
 
+# TODO: MAKE CONFIG PAGE
+
 
 class PlaylistData(TypedDict):
     priority: int

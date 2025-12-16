@@ -8,6 +8,7 @@ import spotdl.utils.config as spotDlConfig
 import spotipy
 from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyClientCredentials
+from src.utils.cache_manager import CACHE
 from src.utils.config_manager import SYNC_OUTPUT_DIRECTORY, PlaylistData
 
 spotdl = None
@@ -17,6 +18,7 @@ client_id = None
 client_secret = None
 
 
+# TODO: TRY TO GET HIGHER QUALITY
 # TODO: TRY TO ALLOW TO USE THE USERNAME OR FACILITATE THE ID
 def get_user_playlists(
     user_id: str,
@@ -104,7 +106,7 @@ def get_user_playlists(
             results = None
 
 
-def download_cover_image(output_directory, cover_url: str) -> None:
+def download_cover_image(output_directory, p_id: str, cover_url: str) -> None:
     try:
         cover_image_path = os.path.join(output_directory, "cover.jpg")
 
@@ -112,12 +114,24 @@ def download_cover_image(output_directory, cover_url: str) -> None:
             print(f"Cover image already exists at: {cover_image_path}")
             return
 
-        response = requests.get(cover_url)
-        if response.status_code == 200:
-            with open(cover_image_path, "wb") as file:
-                file.write(response.content)
-        else:
+        cover_bytes = CACHE.get_cover(p_id)
+
+        if not cover_bytes:
+            response = requests.get(cover_url)
+            if response.status_code == 200:
+                cover_bytes = response.content
+            else:
+                print(
+                    f"Cover url GET request failed with status code {response.status_code} {response.reason}"
+                )
+
+        if not cover_bytes:
             print(f"Failed to download cover image: {cover_url}")
+            return
+
+        with open(cover_image_path, "wb") as file:
+            file.write(cover_bytes)
+
     except Exception as e:
         print(f"Faield to obtain playlist cover: {e}")
 
@@ -195,7 +209,9 @@ def syncPlaylist(
         return
 
     # Download the playlist cover
-    download_cover_image(output_directory, playlist.get("cover_url"))
+    download_cover_image(
+        output_directory, playlist.get("id"), playlist.get("cover_url")
+    )
 
     # Download each song from the playlist
     global spotdl

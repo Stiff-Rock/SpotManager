@@ -8,7 +8,6 @@ from src.utils.config_manager import CONFIG, PlaylistData
 from src.utils.utils import cleanup_thread
 
 
-# TODO: ADD SEARCH PLAYLIST NAME INPUT
 # TODO: Add filters and sorting
 class AddView(QtWidgets.QWidget):
     playlist_added_to_list = QtCore.Signal(PlaylistData, bytes)
@@ -38,6 +37,12 @@ class AddView(QtWidgets.QWidget):
         header_layout.addWidget(header_lbl)
         self.main_layout.addLayout(header_layout)
 
+        # Loader
+        self.search_playlist_loading_indicator = LoadingIndicator("LOCAL")
+        self.search_playlist_loading_indicator.on_cancel.connect(self.cancel_search)
+        self.search_playlist_loading_indicator.hide()
+        self.main_layout.addWidget(self.search_playlist_loading_indicator)
+
         # Username label, input field and search button
         input_layout = QtWidgets.QHBoxLayout()
 
@@ -47,48 +52,27 @@ class AddView(QtWidgets.QWidget):
         self.username_le = QtWidgets.QLineEdit()
         self.username_le.setText(CONFIG.get_username())
         self.username_le.editingFinished.connect(
-            lambda: self._search_playlists(self.username_le.text())
+            lambda: self._search_user_playlists(self.username_le.text())
         )
         self.username_le.setPlaceholderText("Spotify User Id")
         input_layout.addWidget(self.username_le)
 
         search_user_btn = QtWidgets.QPushButton("Load")
         search_user_btn.clicked.connect(
-            lambda: self._search_playlists(self.username_le.text())
+            lambda: self._search_user_playlists(self.username_le.text())
         )
         input_layout.addWidget(search_user_btn)
 
         self.main_layout.addLayout(input_layout)
 
-        # Search bar and search button
-        seach_layout = QtWidgets.QHBoxLayout()
-
-        self.playlist_le = QtWidgets.QLineEdit()
-        # TODO: self.playlist_le.editingFinished.connect()
-        self.playlist_le.setPlaceholderText("Filter by playlist name")
-        seach_layout.addWidget(self.playlist_le)
-
-        search_song_btn = QtWidgets.QPushButton("Search Playlist")
-        search_song_btn.clicked.connect(
-            lambda: self._search_playlists(self.playlist_le.text())
-        )
-        seach_layout.addWidget(search_song_btn)
-        self.main_layout.addLayout(seach_layout)
-
-        # Loader
-        self.search_playlist_loading_indicator = LoadingIndicator("LOCAL")
-        self.search_playlist_loading_indicator.on_cancel.connect(self.cancel_search)
-        self.search_playlist_loading_indicator.hide()
-        self.main_layout.addWidget(self.search_playlist_loading_indicator)
-
         # Playlist scroll list
         self.scroll_playlists_container = ScrollPlaylistsContainer()
         self.main_layout.addWidget(self.scroll_playlists_container)
 
-        self._search_playlists("default")
+        self._search_user_playlists("default")
 
     @QtCore.Slot(str)
-    def _search_playlists(self, username: str):
+    def _search_user_playlists(self, username: str):
         if self._search_logic_thread and self._search_logic_thread.isRunning():
             print("Can't search playlists, logic thread is currently busy")
             return
@@ -164,7 +148,6 @@ class AddView(QtWidgets.QWidget):
         self._add_logic_thread.start()
 
 
-# TODO: SHOW LOCAL LOADER AND AND MAKE IT CANCELLABLE
 class SearchPlaylistsWorker(QtCore.QObject):
     updated_username = QtCore.Signal(str)
     found_playlist = QtCore.Signal(PlaylistData, bytes)

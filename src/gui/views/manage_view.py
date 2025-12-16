@@ -6,6 +6,7 @@ from src.gui.widgets.loading_overlay import LoadingIndicator
 from src.gui.widgets.playlist_card import PlaylistCard
 from src.gui.widgets.scroll_playlists_container import ScrollPlaylistsContainer
 from src.logic.spotdl_commands import syncPlaylist
+from src.utils.cache_manager import CACHE
 from src.utils.config_manager import CONFIG, SYNC_OUTPUT_DIRECTORY, PlaylistData
 from src.utils.utils import cleanup_thread
 
@@ -72,14 +73,13 @@ class ManageView(QtWidgets.QWidget):
 
         self.parse_playlists()
 
-    # TODO: CACHE THE ITEMS SO NO NEED TO RE-MAKE
     def parse_playlists(self):
         if self._logic_thread and self._logic_thread.isRunning():
             print("Can't parse playlists, logic thread is currently busy")
             return
 
         self._logic_thread = QtCore.QThread()
-        self.worker = AddPlaylistCardsWorker()
+        self.worker = ParsePlaylistsWorker()
 
         self.worker.moveToThread(self._logic_thread)
 
@@ -138,6 +138,9 @@ class ManageView(QtWidgets.QWidget):
     def add_playlist_card(self, new_playlist: PlaylistData, cover_bytes: bytes):
         new_card = PlaylistCard("manage", new_playlist, cover_bytes)
 
+        p_id = new_playlist.get("id")
+        CACHE.save_cover(cover_bytes, p_id)
+
         new_card.on_sync_start.connect(self.on_process_start.emit)
         new_card.on_sync_progress_update.connect(self.on_update_progress.emit)
         new_card.on_sync_finish.connect(self.on_process_finish.emit)
@@ -149,7 +152,7 @@ class ManageView(QtWidgets.QWidget):
         insertion_index = self.scroll_playlists_container.add_playlist_card(new_card)
 
         if insertion_index is not None:
-            CONFIG.set_playlist_priority(new_playlist.get("id"), insertion_index)
+            CONFIG.set_playlist_priority(p_id, insertion_index)
 
     @QtCore.Slot()
     def open_playlists_folder(self):
@@ -196,7 +199,7 @@ class SyncAllPlaylistsWorker(QtCore.QObject):
             self.finished.emit()
 
 
-class AddPlaylistCardsWorker(QtCore.QObject):
+class ParsePlaylistsWorker(QtCore.QObject):
     finished = QtCore.Signal()
     progress = QtCore.Signal(list)
     on_add_playlist = QtCore.Signal(PlaylistData, bytes)
@@ -217,13 +220,17 @@ class AddPlaylistCardsWorker(QtCore.QObject):
                 return
 
             for i, playlist in enumerate(current_playlists.values()):
-                response = requests.get(playlist.get("cover_url"))
+                p_id = playlist.get("id")
+                cover_bytes = CACHE.get_cover(p_id)
 
-                cover_bytes = None
-                if response.status_code == 200:
-                    cover_bytes = response.content or bytes()
-                else:
-                    cover_bytes = bytes()
+                if not cover_bytes:
+                    response = requests.get(playlist.get("cover_url"))
+
+                    if response.status_code == 200:
+                        cover_bytes = response.content or bytes()
+                        CACHE.save_cover(cover_bytes, p_id)
+                    else:
+                        cover_bytes = bytes()
 
                 self.on_add_playlist.emit(playlist, cover_bytes)
                 self.progress.emit(

@@ -3,6 +3,7 @@ from typing import Literal
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
+from src.utils.cache_manager import CACHE
 from src.utils.config_manager import CONFIG, PlaylistData
 from src.utils.utils import cleanup_thread
 
@@ -183,11 +184,13 @@ class PlaylistCard(QtWidgets.QWidget):
         del current_playlists[p_id]
 
         CONFIG.set_all_playlists(current_playlists)
+        CACHE.delete_cache_of_playlist(p_id)
 
         self.on_delete.emit()
 
         self.deleteLater()
 
+    # TODO: CHANGE PRIORITY
     @QtCore.Slot()
     def _change_playlist_priority(self, playlist: PlaylistData, change: int):
         old_priority = playlist.get("priority")
