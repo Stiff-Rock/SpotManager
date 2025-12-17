@@ -15,7 +15,7 @@ class MainWindow(QtWidgets.QWidget):
         self.resize(850, 600)
         self.setWindowTitle("SpotManager")
 
-        icon_path = "resources/app_icon.png"
+        icon_path = "resources/app_icon.ico"
         app_icon = QIcon(icon_path)
         self.setWindowIcon(app_icon)
 
