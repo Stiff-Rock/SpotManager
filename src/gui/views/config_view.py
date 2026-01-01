@@ -25,12 +25,12 @@ class ConfigView(QtWidgets.QWidget):
 
         path_row = QtWidgets.QHBoxLayout()
         self.path_le = QtWidgets.QLineEdit(CONFIG.get_playlists_path())
-        self.path_le.textChanged.connect(self.validate_path)
+        self.path_le.textChanged.connect(self._validate_path)
         self.path_le.setPlaceholderText("Select download folder...")
         path_row.addWidget(self.path_le)
 
         select_folder_btn = QtWidgets.QPushButton("📁")
-        select_folder_btn.clicked.connect(self.select_path)
+        select_folder_btn.clicked.connect(self._select_path)
         path_row.addWidget(select_folder_btn)
         content_layout.addLayout(path_row)
 
@@ -50,16 +50,20 @@ class ConfigView(QtWidgets.QWidget):
 
         outer_layout.addStretch()
 
-    def validate_path(self, path: str):
+    def _validate_path(self, path: str):
         if not os.path.isdir(path):
             self.error_lbl.show()
         else:
             self.error_lbl.hide()
+            self._save_path(path)
 
-    def select_path(self):
+    def _select_path(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Folder", os.path.expanduser("~")
         )
         if folder:
-            self.path_le.setText(folder)
-            CONFIG.set_playlists_path(folder)
+            self._save_path(folder)
+
+    def _save_path(self, path: str):
+        self.path_le.setText(path)
+        CONFIG.set_playlists_path(path)

@@ -7,6 +7,7 @@ from src.gui.views.config_view import ConfigView
 from src.gui.views.manage_view import ManageView
 from src.gui.widgets.loading_overlay import LoadingIndicator
 from src.gui.widgets.toast_popup import ToastPopUp
+from src.utils.card_shared_worker import CARD_SHARED_WORKER
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -63,3 +64,7 @@ class MainWindow(QtWidgets.QWidget):
         if self.add_view.add_worker:
             self.add_view.add_worker.cancel()
             print(">> Cancelling add_view worker <<")
+
+        if CARD_SHARED_WORKER.shared_worker:
+            CARD_SHARED_WORKER.shared_worker.cancel()
+            print(">> Cancelling playlist_card worker <<")

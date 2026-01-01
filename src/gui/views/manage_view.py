@@ -11,6 +11,17 @@ from src.utils.config_manager import CONFIG, PlaylistData
 from src.utils.utils import cleanup_thread
 
 
+# TODO: MANUALLY ADD BY URL
+# BUG: QBasicTimer::stop: Failed. Possibly trying to stop from a different thread
+
+
+# BUG: After sync all, try to run single sync: Error while synchronizing playlist '✩': There is no current event loop in thread 'Dummy-3'.
+# C:\Users\Yago\CodeProjects\SpotManager\src\logic\spotdl_commands.py:260: RuntimeWarning:
+# coroutine 'Downloader.pool_download' was never awaited
+# print(f"Error while synchronizing playlist '{p_title}': {e}")
+# RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+
+
 class ManageView(QtWidgets.QWidget):
     on_process_start = QtCore.Signal()
     on_process_finish = QtCore.Signal()

@@ -5,6 +5,7 @@ from PySide6.QtGui import QPixmap
 from src.logic.spotdl_commands import syncPlaylist
 from src.utils.cache_manager import CACHE
 from src.utils.config_manager import CONFIG, PlaylistData
+from src.utils.card_shared_worker import CARD_SHARED_WORKER
 from src.utils.utils import cleanup_thread
 
 CARD_MARGIN = 10
@@ -14,6 +15,7 @@ COVER_DIMS = 90
 CardType = Literal["search", "manage"]
 
 
+# BUG: INDIVIDUAL SYNC CANCEL NOT WORKING
 class PlaylistCard(QtWidgets.QWidget):
     on_add_playlist = QtCore.Signal(PlaylistData, bytes)
     on_sync_start = QtCore.Signal()
@@ -33,7 +35,6 @@ class PlaylistCard(QtWidgets.QWidget):
         self.setMaximumHeight(MAX_HEIGHT)
 
         self._logic_thread = None
-        self.worker = None
 
         self.playlist = new_playlist
 
@@ -150,20 +151,22 @@ class PlaylistCard(QtWidgets.QWidget):
             return
 
         self._logic_thread = QtCore.QThread()
-        self.worker = SyncPlaylistsWorker(playlist)
+        CARD_SHARED_WORKER.shared_worker = SyncPlaylistsWorker(playlist)
 
-        self.worker.moveToThread(self._logic_thread)
+        CARD_SHARED_WORKER.shared_worker.moveToThread(self._logic_thread)
 
-        self._logic_thread.started.connect(self.worker.run)
+        self._logic_thread.started.connect(CARD_SHARED_WORKER.shared_worker.run)
         self._logic_thread.finished.connect(
-            lambda: cleanup_thread(self, "worker", "_logic_thread")
+            lambda: cleanup_thread(self, "shared_worker", "_logic_thread")
         )
 
-        self.worker.finished.connect(self._logic_thread.quit)
+        CARD_SHARED_WORKER.shared_worker.finished.connect(self._logic_thread.quit)
 
         # Custom Signals
-        self.worker.progress.connect(self.on_sync_progress_update.emit)
-        self.worker.finished.connect(self.on_sync_finish.emit)
+        CARD_SHARED_WORKER.shared_worker.progress.connect(
+            self.on_sync_progress_update.emit
+        )
+        CARD_SHARED_WORKER.shared_worker.finished.connect(self.on_sync_finish.emit)
 
         self.synching_playlist_count = sum(
             playlist.get("enabled", False)
@@ -205,6 +208,7 @@ class SyncPlaylistsWorker(QtCore.QObject):
     @QtCore.Slot()
     def cancel(self):
         self.cancel_event.set()
+        print("CANCELLED")
 
     def run(self):
         try:
